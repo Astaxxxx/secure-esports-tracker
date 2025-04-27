@@ -386,3 +386,91 @@ export const updateUserSettings = async (settings) => {
     return { status: 'success', message: 'Settings updated (offline mode)' };
   }
 };
+
+/**
+ * Get IoT device data for a specific device
+ * @param {string} deviceId - The device ID
+ * @returns {Promise<Object>} - Device data
+ */
+export const getIoTDeviceData = async (deviceId) => {
+  try {
+    const response = await fetchWithAuth(`/api/metrics/iot_data/${deviceId}`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching IoT device data:', error);
+    // Return fallback data for testing
+    return { 
+      data: [{
+        device_id: deviceId,
+        session_id: 'fallback-session',
+        timestamp: new Date().toISOString(),
+        metrics: {
+          clicks_per_second: 4,
+          movements_count: 120,
+          dpi: 16000,
+          polling_rate: 1000,
+          avg_click_distance: 42.5,
+          button_count: 8
+        },
+        status: {
+          under_attack: false,
+          attack_duration: 0,
+          battery_level: 85,
+          connection_quality: 95
+        }
+      }]
+    };
+  }
+};
+
+/**
+ * Get security alerts for a specific device
+ * @param {string} deviceId - The device ID
+ * @returns {Promise<Object>} - Security alerts
+ */
+export const getDeviceSecurityAlerts = async (deviceId) => {
+  try {
+    const response = await fetchWithAuth(`/api/security/device_alerts/${deviceId}`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching security alerts:', error);
+    // Return fallback data for testing
+    return { 
+      alerts: [{
+        timestamp: new Date().toISOString(),
+        event_type: 'attack_detected',
+        details: {
+          attack_type: 'ping_flood',
+          intensity: 72,
+          threshold: 50
+        },
+        severity: 'critical'
+      }]
+    };
+  }
+};
+
+/**
+ * Send a command to an IoT device
+ * @param {string} deviceId - The device ID
+ * @param {string} command - The command to send
+ * @param {Object} params - Command parameters
+ * @returns {Promise<Object>} - Command result
+ */
+export const sendDeviceCommand = async (deviceId, command, params = {}) => {
+  try {
+    const response = await fetchWithAuth(`/api/device/${deviceId}/command`, {
+      method: 'POST',
+      body: JSON.stringify({
+        command,
+        ...params
+      })
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Error sending device command:', error);
+    return { status: 'error', message: error.message };
+  }
+};

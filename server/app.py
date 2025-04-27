@@ -2,6 +2,7 @@
 """
 Secure Esports Equipment Performance Tracker - Server Application
 Flask-based server for receiving, processing, and analyzing equipment performance data
+Enhanced with IoT device support and security alerts
 """
 
 import os
@@ -12,13 +13,17 @@ import uuid
 import base64
 import hashlib
 import logging
+import threading
 from datetime import datetime, timedelta
 from functools import wraps
 
-from flask import Flask, request, jsonify, abort, render_template, Response
+from flask import Flask, request, jsonify, abort, render_template, Response, current_app
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
+
+# Import routes
+import routes.security
 
 # Configure logging
 logging.basicConfig(
@@ -37,6 +42,46 @@ app.config['DATABASE_PATH'] = os.getenv('DATABASE_PATH', 'secure_esports.db')
 app.config['JWT_KEY'] = 'secure-esports-tracker-jwt-key-for-development'  # FIXED: Static key for development
 app.config['CLIENT_SECRETS'] = {}  # Store client secrets (in memory for demonstration)
 
+# Initialize storage for IoT data and alerts
+app.iot_data = {}
+app.device_alerts = {}
+
+# Test data for simulated mouse
+app.iot_data['mouse-001'] = [
+    {
+        'device_id': 'mouse-001',
+        'session_id': 'test-session',
+        'timestamp': datetime.now().isoformat(),
+        'metrics': {
+            'clicks_per_second': 4,
+            'movements_count': 120,
+            'dpi': 16000,
+            'polling_rate': 1000,
+            'avg_click_distance': 42.5,
+            'button_count': 8
+        },
+        'status': {
+            'under_attack': False,
+            'attack_duration': 0,
+            'battery_level': 85,
+            'connection_quality': 95
+        }
+    }
+]
+
+# Add test security alerts
+app.device_alerts['mouse-001'] = [
+    {
+        'timestamp': datetime.now().isoformat(),
+        'event_type': 'attack_detected',
+        'details': {
+            'attack_type': 'ping_flood',
+            'intensity': 72,
+            'threshold': 50
+        },
+        'severity': 'critical'
+    }
+]
 # Initialize CORS with more permissive settings for development
 CORS(app, 
     resources={r"/*": {"origins": "*"}}, 
@@ -80,6 +125,14 @@ devices = {
         'client_secret': 'secret_2',
         'name': 'Gaming Keyboard',
         'device_type': 'keyboard',
+        'status': 'active',
+        'registered_at': datetime.utcnow().isoformat()
+    },
+    'mouse-001': {
+        'client_id': 'mouse-001',
+        'client_secret': 'secret_mouse',
+        'name': 'Gaming Mouse',
+        'device_type': 'mouse',
         'status': 'active',
         'registered_at': datetime.utcnow().isoformat()
     }
@@ -184,6 +237,20 @@ def log_security_event(event_type, details=None):
     security_events.append(event)
     logger.info(f"SECURITY EVENT: {event_type} - {details}")
 
+# Make the function accessible to the app
+app.log_security_event = log_security_event
+
+# Create a route_decorator object to pass to the security routes
+class RouteDecorator:
+    def __init__(self):
+        self.require_auth = require_auth
+        self.verify_signature = verify_signature
+        
+app.route_decorator = RouteDecorator()
+
+# Register security routes
+security_routes = routes.security.register_security_routes(app)
+
 # --------- Routes ---------
 
 @app.route('/')
@@ -211,6 +278,10 @@ def index():
                 <li>/api/devices - Manage and view devices</li>
                 <li>/api/sessions/recent - View recent sessions</li>
                 <li>/api/security/logs - View security logs (admin only)</li>
+                <li>/api/security/alert - Receive security alerts from IoT devices</li>
+                <li>/api/security/device_alerts/:device_id - Get security alerts for a device</li>
+                <li>/api/metrics/iot_data - Submit IoT device data</li>
+                <li>/api/metrics/iot_data/:device_id - Get IoT device data</li>
             </ul>
         </body>
     </html>
@@ -696,6 +767,67 @@ def update_user_settings():
     except Exception as e:
         logger.error(f"Error updating user settings: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+
+
+
+# Route to handle IoT device commands
+@app.route('/api/device/<device_id>/command', methods=['POST', 'OPTIONS'])
+@require_auth
+def send_device_command(device_id):
+    """Send a command to an IoT device"""
+    # Handle OPTIONS request for CORS preflight
+    if request.method == 'OPTIONS':
+        return '', 204
+        
+    try:
+        data = request.json
+        command = data.get('command')
+        
+        if not command:
+            return jsonify({'error': 'Command required'}), 400
+            
+        # Check if device exists
+        if device_id not in devices:
+            return jsonify({'error': 'Device not found'}), 404
+            
+        # In a real implementation, would send command to device via MQTT
+        # For demonstration, just log it
+        log_security_event('device_command', {
+            'device_id': device_id,
+            'command': command,
+            'parameters': data
+        })
+        
+        return jsonify({
+            'status': 'success', 
+            'message': f'Command {command} sent to device {device_id}'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error sending device command: {e}")
+        return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+
+@app.route('/api/debug/iot_data/<device_id>', methods=['GET'])
+def debug_iot_data(device_id):
+    """Debug endpoint to view IoT data without authentication"""
+    if not hasattr(app, 'iot_data'):
+        return jsonify({'error': 'No IoT data storage initialized'}), 404
+    
+    if device_id not in app.iot_data:
+        return jsonify({'error': f'No data for device {device_id}'}), 404
+    
+    return jsonify({'data': app.iot_data[device_id]})
+
+@app.route('/api/debug/device_alerts/<device_id>', methods=['GET'])
+def debug_device_alerts(device_id):
+    """Debug endpoint to view device alerts without authentication"""
+    if not hasattr(app, 'device_alerts'):
+        return jsonify({'error': 'No device alerts storage initialized'}), 404
+    
+    if device_id not in app.device_alerts:
+        return jsonify({'error': f'No alerts for device {device_id}'}), 404
+    
+    return jsonify({'alerts': app.device_alerts[device_id]})
 
 # ------- Main application entry point -------
 

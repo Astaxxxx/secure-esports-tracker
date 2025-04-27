@@ -11,6 +11,7 @@ import DeviceManager from './pages/DeviceManager';
 import SessionHistory from './pages/SessionHistory';
 import SecurityLogs from './pages/SecurityLogs';
 import Settings from './pages/Settings';
+import IoTDevices from './pages/IoTDevices';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -94,14 +95,15 @@ useEffect(() => {
             <div className="main-container">
               <Sidebar user={user} />
               <main className="content">
-                <Routes>
-                  <Route path="/" element={<Dashboard user={user} />} />
-                  <Route path="/devices" element={<DeviceManager user={user} />} />
-                  <Route path="/sessions" element={<SessionHistory user={user} />} />
-                  <Route path="/security" element={<SecurityLogs user={user} />} />
-                  <Route path="/settings" element={<Settings user={user} />} />
-                  <Route path="*" element={<Navigate to="/" />} />
-                </Routes>
+              <Routes>
+                <Route path="/" element={<Dashboard user={user} />} />
+                <Route path="/devices" element={<DeviceManager user={user} />} />
+                <Route path="/sessions" element={<SessionHistory user={user} />} />
+                <Route path="/security" element={<SecurityLogs user={user} />} />
+                <Route path="/iot" element={<IoTDevices user={user} />} />
+                <Route path="/settings" element={<Settings user={user} />} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
               </main>
             </div>
           </>

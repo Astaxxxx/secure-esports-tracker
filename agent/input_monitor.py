@@ -11,6 +11,7 @@ import hashlib
 import logging
 import threading
 import os
+import socket
 from datetime import datetime
 from pynput import keyboard, mouse
 from cryptography.fernet import Fernet
@@ -61,6 +62,12 @@ class InputMonitor:
         # Create data directory for offline storage
         os.makedirs(os.path.join(config.DATA_DIR, 'local_data'), exist_ok=True)
         
+        # Add IoT device monitoring
+        self.iot_devices = {}
+        self.iot_thread = threading.Thread(target=self._monitor_iot_devices)
+        self.iot_thread.daemon = True
+        self.iot_thread.start()
+
         logger.info(f"Input monitoring session started: {self.session_id}")
 
     def start(self):
@@ -270,6 +277,64 @@ class InputMonitor:
                 
         except Exception as e:
             logger.error(f"Error sending data: {e}")
+
+    def _monitor_iot_devices(self):
+        """Monitor IoT gaming devices for metrics and attacks"""
+        while self.running:
+            try:
+                # Listen for IoT device metrics on port 5000
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.bind(('localhost', 5000))
+                sock.listen(5)
+                
+                while self.running:
+                    client, addr = sock.accept()
+                    data = client.recv(1024)
+                    if data:
+                        self._process_iot_data(data)
+                    client.close()
+                    
+            except Exception as e:
+                logger.error(f"Error monitoring IoT devices: {e}")
+                time.sleep(5)  # Wait before retrying
+
+    def _process_iot_data(self, data):
+        """Process data received from IoT devices"""
+        try:
+            data = json.loads(data.decode())
+            
+            if 'attack_source' in data:
+                # This is attack data
+                logger.warning(f"Attack detected on {data['device_type']}: {data['packet_count']} packets from {data['attack_source']}")
+                self._send_attack_data(data)
+            else:
+                # This is metrics data
+                device_type = data['device_type']
+                self.iot_devices[device_type] = data['metrics']
+                logger.info(f"Received metrics from {device_type}: {data['metrics']}")
+                
+        except Exception as e:
+            logger.error(f"Error processing IoT data: {e}")
+
+    def _send_attack_data(self, attack_data):
+        """Send attack data to server"""
+        try:
+            data_package = {
+                'session_id': self.session_id,
+                'timestamp': datetime.now().isoformat(),
+                'attack_data': attack_data,
+                'device_info': {
+                    'client_id': config.CLIENT_ID,
+                    'device_name': config.DEVICE_NAME,
+                    'device_type': config.DEVICE_TYPE
+                }
+            }
+            
+            encrypted_data = self.cipher.encrypt(json.dumps(data_package).encode())
+            self.sender.send_data(encrypted_data)
+            
+        except Exception as e:
+            logger.error(f"Error sending attack data: {e}")
 
 if __name__ == "__main__":
     try:

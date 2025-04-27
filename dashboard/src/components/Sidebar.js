@@ -21,6 +21,13 @@ const Sidebar = ({ user }) => {
         </li>
         
         <li className="nav-item">
+          <NavLink to="/iot" className="nav-link">
+            <span className="nav-icon">🔌</span>
+            <span className="nav-text">IoT Devices</span>
+          </NavLink>
+        </li>
+        
+        <li className="nav-item">
           <NavLink to="/sessions" className="nav-link">
             <span className="nav-icon">🎮</span>
             <span className="nav-text">Sessions</span>
