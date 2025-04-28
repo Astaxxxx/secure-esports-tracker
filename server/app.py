@@ -885,8 +885,8 @@ if __name__ == '__main__':
     result = test_mqtt_connection()
     
     if result['success']:
-        print(f"\n✅ MQTT connection successful!")
-        print(f"✅ Connected in {result['connection_time']} seconds")
+        print(f"\n MQTT connection successful!")
+        print(f" Connected in {result['connection_time']} seconds")
     else:
         print(f"\n❌ MQTT connection test failed!")
         print(f"❌ Error: {result['error']}")
