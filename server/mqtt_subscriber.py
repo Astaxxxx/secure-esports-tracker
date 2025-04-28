@@ -1,141 +1,113 @@
-#!/usr/bin/env python3
-"""
-MQTT Subscriber for IoT Gaming Mouse Data
-This script subscribes to MQTT topics for IoT gaming mouse data and stores it in the database
-"""
+
 
 import os
 import json
 import time
 import logging
-import paho.mqtt.client as mqtt
+import threading
+import ssl
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+import paho.mqtt.client as mqtt
+import hashlib
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S',  # Use ISO format to avoid Unix timestamp disclosure
     filename='mqtt_subscriber.log'
 )
 logger = logging.getLogger('mqtt_subscriber')
 
-# Database setup
-Base = declarative_base()
-
-class IoTDevice(Base):
-    """Model for IoT devices"""
-    __tablename__ = 'iot_devices'
-    
-    id = Column(Integer, primary_key=True)
-    device_id = Column(String(50), unique=True, nullable=False)
-    device_type = Column(String(50), default='mouse')
-    status = Column(String(20), default='offline')
-    last_active = Column(DateTime, default=datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    metrics = relationship('IoTMetric', backref='device', lazy=True)
-    security_events = relationship('IoTSecurityEvent', backref='device', lazy=True)
-
-class IoTMetric(Base):
-    """Model for IoT device metrics"""
-    __tablename__ = 'iot_metrics'
-    
-    id = Column(Integer, primary_key=True)
-    device_id = Column(String(50), ForeignKey('iot_devices.device_id'), nullable=False)
-    session_id = Column(String(50), nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
-    
-    # Performance metrics
-    clicks_per_second = Column(Integer, default=0)
-    movements_count = Column(Integer, default=0)
-    dpi = Column(Integer, default=0)
-    polling_rate = Column(Integer, default=0)
-    avg_click_distance = Column(Float, default=0.0)
-    button_count = Column(Integer, default=0)
-    
-    # Status metrics
-    battery_level = Column(Integer, default=100)
-    connection_quality = Column(Integer, default=100)
-    under_attack = Column(Boolean, default=False)
-    attack_duration = Column(Integer, default=0)
-
-class IoTSecurityEvent(Base):
-    """Model for IoT security events"""
-    __tablename__ = 'iot_security_events'
-    
-    id = Column(Integer, primary_key=True)
-    device_id = Column(String(50), ForeignKey('iot_devices.device_id'), nullable=False)
-    alert_type = Column(String(50), nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
-    details = Column(Text)
-    resolved = Column(Boolean, default=False)
-    resolved_at = Column(DateTime)
-
 class MQTTSubscriber:
-    """MQTT Subscriber for IoT Gaming Mouse Data"""
-    
+
     def __init__(self, mqtt_broker="localhost", mqtt_port=1883, 
-                 mqtt_topic_prefix="iot/gaming/mouse", db_uri=None):
+                 mqtt_topic_prefix="iot/gaming/mouse", db_uri=None,
+                 use_tls=False, ca_cert=None, client_cert=None, client_key=None):
         self.mqtt_broker = mqtt_broker
         self.mqtt_port = mqtt_port
         self.mqtt_topic_prefix = mqtt_topic_prefix
-        self.db_uri = db_uri or 'sqlite:///iot_devices.db'
+        self.db_uri = db_uri or os.environ.get('DB_URI', 'sqlite:///iot_devices.db')
         self.running = False
         
-        # Set up database
-        self.engine = create_engine(self.db_uri)
-        Base.metadata.create_all(self.engine)
-        self.Session = sessionmaker(bind=self.engine)
+        # TLS configuration
+        self.use_tls = use_tls
+        self.ca_cert = ca_cert
+        self.client_cert = client_cert
+        self.client_key = client_key
+        
+        # Generate a secure client ID that doesn't expose identifying information
+        self.client_id = f"server-subscriber-{hashlib.sha256(os.urandom(32)).hexdigest()[:8]}"
         
         # Initialize MQTT client
-        self.client = mqtt.Client(client_id="server-subscriber")
+        self.client = mqtt.Client(client_id=self.client_id)
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
         
+        # Set up TLS if enabled
+        if self.use_tls:
+            self.client.tls_set(
+                ca_certs=self.ca_cert,
+                certfile=self.client_cert,
+                keyfile=self.client_key,
+                cert_reqs=ssl.CERT_REQUIRED,
+                tls_version=ssl.PROTOCOL_TLS,
+                ciphers=None
+            )
+            
+        # Set up authentication if credentials are provided
+        mqtt_username = os.environ.get('MQTT_USERNAME')
+        mqtt_password = os.environ.get('MQTT_PASSWORD')
+        if mqtt_username and mqtt_password:
+            self.client.username_pw_set(mqtt_username, mqtt_password)
+    
     def _on_connect(self, client, userdata, flags, rc):
-        """Callback when connected to MQTT broker"""
+        
         if rc == 0:
             logger.info(f"Connected to MQTT broker at {self.mqtt_broker}:{self.mqtt_port}")
             
-            # Subscribe to all IoT device topics
-            client.subscribe(f"{self.mqtt_topic_prefix}/+/security", qos=2)
+            # Subscribe to topics with QoS 1 or 2 for important messages
+            client.subscribe(f"{self.mqtt_topic_prefix}/+/security", qos=2)  # QoS 2 for critical security messages
             client.subscribe(f"{self.mqtt_topic_prefix}/+/data", qos=1)
             client.subscribe(f"{self.mqtt_topic_prefix}/+/status", qos=1)
-            client.subscribe(f"{self.mqtt_topic_prefix}/+/security", qos=2)
             
             logger.info(f"Subscribed to topics: {self.mqtt_topic_prefix}/+/data, /status, /security")
         else:
             logger.error(f"Failed to connect to MQTT broker with code: {rc}")
     
-    def _on_disconnect(self, client, userdata, rc):
-        """Callback when disconnected from MQTT broker"""
-        logger.warning(f"Disconnected from MQTT broker with code: {rc}")
-        
-        # Try to reconnect if we're still running
-        if self.running:
-            logger.info("Attempting to reconnect...")
-            time.sleep(5)
-            try:
-                client.reconnect()
-            except Exception as e:
-                logger.error(f"Reconnection failed: {e}")
-    
     def _on_message(self, client, userdata, msg):
-        """Callback when message is received"""
+        """Callback when message is received with improved security"""
         try:
+            # Validate topic format to prevent injection
             topic_parts = msg.topic.split('/')
-            if len(topic_parts) >= 3:
-                device_id = topic_parts[-2]
-                message_type = topic_parts[-1]
+            if len(topic_parts) < 3:
+                logger.warning(f"Received message with invalid topic format: {msg.topic}")
+                return
                 
-                logger.debug(f"Received {message_type} message from {device_id}")
+            device_id = topic_parts[-2]
+            message_type = topic_parts[-1]
+            
+            # Validate device_id format (prevent path traversal/injection)
+            if not self._is_valid_identifier(device_id):
+                logger.warning(f"Received message with invalid device ID: {device_id}")
+                return
                 
+            # Sanitize and validate message payload
+            try:
+                # Limit payload size to prevent DoS
+                if len(msg.payload) > 10240:  # 10KB limit
+                    logger.warning(f"Message payload too large ({len(msg.payload)} bytes) from {device_id}")
+                    return
+                    
                 payload = json.loads(msg.payload)
+                
+                # Basic validation of payload structure
+                if not isinstance(payload, dict):
+                    logger.warning(f"Invalid payload format from {device_id}: not a JSON object")
+                    return
+                    
+                # Sanitize payload to prevent injection
+                payload = self._sanitize_payload(payload)
                 
                 # Process message based on type
                 if message_type == 'data':
@@ -144,242 +116,199 @@ class MQTTSubscriber:
                     self._process_status_message(device_id, payload)
                 elif message_type == 'security':
                     self._process_security_message(device_id, payload)
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"Malformed message payload: {e}")
-        except Exception as e:
-            logger.error(f"Error processing message: {e}")
-    
-    def _process_data_message(self, device_id, payload):
-        """Process data message from device"""
-        try:
-            # Ensure device exists
-            self._ensure_device_exists(device_id)
-            
-            # Create database session
-            session = self.Session()
-            
-            try:
-                # Parse timestamp
-                timestamp = datetime.fromisoformat(payload.get('timestamp', datetime.utcnow().isoformat()))
-                
-                # Create new metric record
-                metric = IoTMetric(
-                    device_id=device_id,
-                    session_id=payload.get('session_id', 'unknown'),
-                    timestamp=timestamp,
-                    clicks_per_second=payload.get('metrics', {}).get('clicks_per_second', 0),
-                    movements_count=payload.get('metrics', {}).get('movements_count', 0),
-                    dpi=payload.get('metrics', {}).get('dpi', 0),
-                    polling_rate=payload.get('metrics', {}).get('polling_rate', 0),
-                    avg_click_distance=payload.get('metrics', {}).get('avg_click_distance', 0.0),
-                    button_count=payload.get('metrics', {}).get('button_count', 0),
-                    battery_level=payload.get('status', {}).get('battery_level', 100),
-                    connection_quality=payload.get('status', {}).get('connection_quality', 100),
-                    under_attack=payload.get('status', {}).get('under_attack', False),
-                    attack_duration=payload.get('status', {}).get('attack_duration', 0)
-                )
-                
-                # Update device last active time
-                device = session.query(IoTDevice).filter_by(device_id=device_id).first()
-                if device:
-                    device.last_active = timestamp
-                    device.status = 'online'
-                
-                # Add and commit
-                session.add(metric)
-                session.commit()
-                
-                logger.debug(f"Stored metrics for device {device_id}")
-                
-            except Exception as e:
-                session.rollback()
-                logger.error(f"Database error processing data message: {e}")
-            finally:
-                session.close()
-                
-        except Exception as e:
-            logger.error(f"Error processing data message: {e}")
-    
-    def _process_status_message(self, device_id, payload):
-        """Process status message from device"""
-        try:
-            # Create database session
-            session = self.Session()
-            
-            try:
-                # Parse timestamp
-                timestamp = datetime.fromisoformat(payload.get('timestamp', datetime.utcnow().isoformat()))
-                status = payload.get('status', 'unknown')
-                
-                # Update device status
-                device = session.query(IoTDevice).filter_by(device_id=device_id).first()
-                
-                if not device:
-                    # Create new device if it doesn't exist
-                    device = IoTDevice(
-                        device_id=device_id,
-                        status=status,
-                        last_active=timestamp
-                    )
-                    session.add(device)
                 else:
-                    device.status = status
-                    device.last_active = timestamp
-                
-                session.commit()
-                logger.info(f"Updated status for device {device_id}: {status}")
-                
-            except Exception as e:
-                session.rollback()
-                logger.error(f"Database error processing status message: {e}")
-            finally:
-                session.close()
+                    logger.warning(f"Unknown message type: {message_type}")
+                    
+            except json.JSONDecodeError:
+                logger.warning(f"Malformed JSON payload from {device_id}")
+                return
                 
         except Exception as e:
-            logger.error(f"Error processing status message: {e}")
+            logger.error(f"Error processing message: {str(e)}")
     
-    def _process_security_message(self, device_id, payload):
-        """Process security message from device"""
-        try:
-            # Ensure device exists
-            self._ensure_device_exists(device_id)
-            
-            # Create database session
-            session = self.Session()
-            
-            try:
-                # Parse timestamp
-                timestamp = datetime.fromisoformat(payload.get('timestamp', datetime.utcnow().isoformat()))
-                alert_type = payload.get('alert_type', 'unknown')
-                details = json.dumps(payload.get('details', {}))
-                
-                if alert_type == 'attack_detected':
-                    # Create new security event
-                    event = IoTSecurityEvent(
-                        device_id=device_id,
-                        alert_type=alert_type,
-                        timestamp=timestamp,
-                        details=details,
-                        resolved=False
-                    )
-                    session.add(event)
-                    
-                    logger.warning(f"Security alert from device {device_id}: {alert_type}")
-                    
-                elif alert_type == 'attack_resolved':
-                    # Find and update unresolved events for this device
-                    unresolved_events = session.query(IoTSecurityEvent).filter_by(
-                        device_id=device_id,
-                        alert_type='attack_detected',
-                        resolved=False
-                    ).all()
-                    
-                    for event in unresolved_events:
-                        event.resolved = True
-                        event.resolved_at = timestamp
-                    
-                    logger.info(f"Security alert resolved for device {device_id}")
-                
-                session.commit()
-                
-            except Exception as e:
-                session.rollback()
-                logger.error(f"Database error processing security message: {e}")
-            finally:
-                session.close()
-                
-        except Exception as e:
-            logger.error(f"Error processing security message: {e}")
+    def _is_valid_identifier(self, identifier):
+        """Validate identifier format to prevent injection"""
+        import re
+        # Only allow alphanumeric characters, dashes, and underscores
+        pattern = r'^[a-zA-Z0-9\-_]+$'
+        return bool(re.match(pattern, identifier))
     
-    def _ensure_device_exists(self, device_id):
-        """Ensure device exists in database"""
-        session = self.Session()
-        try:
-            device = session.query(IoTDevice).filter_by(device_id=device_id).first()
-            if not device:
-                logger.info(f"Creating new device record for {device_id}")
-                device = IoTDevice(
-                    device_id=device_id,
-                    status='unknown'
-                )
-                session.add(device)
-                session.commit()
-                
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Database error ensuring device exists: {e}")
-        finally:
-            session.close()
+    def _sanitize_payload(self, payload):
+        """Sanitize payload to prevent injection attacks"""
+        if isinstance(payload, dict):
+            return {k: self._sanitize_payload(v) for k, v in payload.items()}
+        elif isinstance(payload, list):
+            return [self._sanitize_payload(item) for item in payload]
+        elif isinstance(payload, str):
+            # Basic HTML sanitization for strings
+            return payload.replace('<', '&lt;').replace('>', '&gt;')
+        else:
+            return payload
     
     def start(self):
-        """Start the MQTT subscriber"""
+        """Start the MQTT subscriber with proper error handling"""
         self.running = True
         
-        # Test connection first
-        mqtt_result = test_mqtt_connection(
-            mqtt_broker=self.mqtt_broker,
-            mqtt_port=self.mqtt_port
-        )
-    
-        if not mqtt_result['success']:
-            logger.error(f"Cannot start subscriber - MQTT broker unreachable: {mqtt_result['error']}")
-            self.running = False
-            return False
+        # Set up signal handler for graceful shutdown
+        import signal
+        def signal_handler(sig, frame):
+            logger.info("Received signal to shut down")
+            self.stop()
+            import sys
+            sys.exit(0)
+            
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
         
-        # Connect to MQTT broker
-        try:
-            self.client.connect(self.mqtt_broker, self.mqtt_port, 60)
-            self.client.loop_start()
-            logger.info("MQTT subscriber started")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to connect to MQTT broker: {e}")
-            self.running = False
-            return False
+        # Connect with retries
+        retry_count = 0
+        max_retries = 5
+        while retry_count < max_retries:
+            try:
+                logger.info(f"Connecting to MQTT broker at {self.mqtt_broker}:{self.mqtt_port}")
+                self.client.connect(self.mqtt_broker, self.mqtt_port, keepalive=60)
+                self.client.loop_start()
+                
+                # Wait for connection to establish
+                time.sleep(2)
+                
+                # Check if connection was successful
+                if not self.client.is_connected():
+                    logger.warning("Failed to connect, retrying...")
+                    retry_count += 1
+                    time.sleep(2 ** retry_count)  # Exponential backoff
+                    continue
+                    
+                logger.info("MQTT subscriber started successfully")
+                return True
+                
+            except Exception as e:
+                logger.error(f"Failed to connect to MQTT broker: {str(e)}")
+                retry_count += 1
+                if retry_count >= max_retries:
+                    logger.error("Maximum retry attempts reached, giving up")
+                    self.running = False
+                    return False
+                    
+                time.sleep(2 ** retry_count)  # Exponential backoff
+        
+        return False
     
     def stop(self):
-        """Stop the MQTT subscriber"""
+        """Stop the MQTT subscriber gracefully"""
         if self.running:
             self.running = False
-            self.client.loop_stop()
-            self.client.disconnect()
-            logger.info("MQTT subscriber stopped")
+            
+            try:
+                # Properly disconnect from broker
+                logger.info("Disconnecting from MQTT broker")
+                self.client.loop_stop()
+                self.client.disconnect()
+                logger.info("MQTT subscriber stopped")
+            except Exception as e:
+                logger.error(f"Error stopping MQTT subscriber: {str(e)}")
 
-def main():
-    import argparse
+# Use this function to test the MQTT connection securely
+def test_mqtt_connection(mqtt_broker="localhost", mqtt_port=1883, timeout=5,
+                         use_tls=False, ca_cert=None, client_cert=None, client_key=None):
+
+    import time
+    import paho.mqtt.client as mqtt
+    import threading
+    import hashlib
     
-    parser = argparse.ArgumentParser(description='MQTT Subscriber for IoT Gaming Mouse Data')
-    parser.add_argument('--broker', default='localhost', help='MQTT broker address')
-    parser.add_argument('--port', type=int, default=1883, help='MQTT broker port')
-    parser.add_argument('--topic', default='iot/gaming/mouse', help='MQTT topic prefix')
-    parser.add_argument('--db', default='sqlite:///iot_devices.db', help='Database URI')
-    args = parser.parse_args()
+    # Generate a secure client ID that doesn't expose identifying information
+    client_id = f"mqtt-test-{hashlib.sha256(os.urandom(32)).hexdigest()[:8]}"
+    
+    # Results dictionary
+    result = {
+        'success': False,
+        'connection_time': None,
+        'error': None,
+        'broker_info': f"{mqtt_broker}:{mqtt_port}"
+    }
+    
+    # Connection flag and event
+    connected = False
+    connection_event = threading.Event()
+    
+    # Define callbacks
+    def on_connect(client, userdata, flags, rc):
+        nonlocal connected
+        if rc == 0:
+            connected = True
+            logger.info(f"Successfully connected to MQTT broker at {mqtt_broker}:{mqtt_port}")
+            connection_event.set()
+        else:
+            error_messages = {
+                1: "Incorrect protocol version",
+                2: "Invalid client identifier",
+                3: "Server unavailable",
+                4: "Bad username or password",
+                5: "Not authorized"
+            }
+            error_msg = error_messages.get(rc, f"Unknown error code: {rc}")
+            logger.error(f"Failed to connect to MQTT broker: {error_msg}")
+            result['error'] = error_msg
+            connection_event.set()
+    
+    def on_disconnect(client, userdata, rc):
+        if rc != 0:
+            logger.warning(f"Unexpected disconnection from MQTT broker: {rc}")
+    
+    # Create client
+    client = mqtt.Client(client_id=client_id)
+    
+    # Set up TLS if enabled
+    if use_tls:
+        try:
+            client.tls_set(
+                ca_certs=ca_cert,
+                certfile=client_cert,
+                keyfile=client_key,
+                cert_reqs=ssl.CERT_REQUIRED,
+                tls_version=ssl.PROTOCOL_TLS,
+                ciphers=None
+            )
+        except Exception as e:
+            result['error'] = f"TLS setup error: {str(e)}"
+            return result
+    
+    # Set callbacks
+    client.on_connect = on_connect
+    client.on_disconnect = on_disconnect
     
     try:
-        subscriber = MQTTSubscriber(
-            mqtt_broker=args.broker,
-            mqtt_port=args.port,
-            mqtt_topic_prefix=args.topic,
-            db_uri=args.db
-        )
+        # Record start time
+        start_time = time.time()
         
-        if subscriber.start():
-            # Keep the main thread running
-            try:
-                while True:
-                    time.sleep(1)
-            except KeyboardInterrupt:
-                print("Stopping subscriber...")
-                subscriber.stop()
+        # Connect to broker with timeout
+        client.connect_async(mqtt_broker, mqtt_port, 60)
+        
+        # Start network loop in background thread
+        client.loop_start()
+        
+        # Wait for connection or timeout
+        if connection_event.wait(timeout):
+            # Calculate connection time
+            connection_time = time.time() - start_time
+            result['connection_time'] = round(connection_time, 3)
+            result['success'] = connected
         else:
-            print("Failed to start the subscriber")
-                
+            # Connection timeout
+            result['error'] = f"Connection timeout after {timeout} seconds"
+            logger.error(f"MQTT connection timeout after {timeout} seconds")
+    
     except Exception as e:
-        logger.error(f"Error: {e}")
-        return 1
-        
-    return 0
-
-if __name__ == "__main__":
-    main()
+        # Handle connection exceptions
+        error_msg = str(e)
+        result['error'] = error_msg
+        logger.error(f"Error connecting to MQTT broker: {error_msg}")
+    
+    finally:
+        # Clean up
+        client.loop_stop()
+        if connected:
+            client.disconnect()
+    
+    return result

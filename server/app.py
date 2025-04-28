@@ -11,24 +11,29 @@ import hmac
 import time
 import uuid
 import base64
-import hashlib
 import logging
 import threading
 from datetime import datetime, timedelta
 from functools import wraps
-from mqtt_utils import test_mqtt_connection
 from flask import Flask, request, jsonify, abort, render_template, Response, current_app
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 
+# Import security middleware
+from security_middleware import setup_security_headers
+
+# Import sanitization utilities
+from utils.sanitize import sanitize_input
+
 # Import routes
 import routes.security
 
-# Configure logging
+# Configure logging with ISO format timestamps (not Unix timestamps)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S',
     filename='server.log'
 )
 logger = logging.getLogger('server')
@@ -36,15 +41,26 @@ logger = logging.getLogger('server')
 # Create Flask application
 app = Flask(__name__)
 
-# Configure application
-app.config['SECRET_KEY'] = 'secure-esports-tracker-secret-key'
-app.config['DATABASE_PATH'] = os.getenv('DATABASE_PATH', 'secure_esports.db')
-app.config['JWT_KEY'] = 'secure-esports-tracker-jwt-key-for-development'  # FIXED: Static key for development
+# Apply security middleware
+app = setup_security_headers(app)
+
+# Configure application with environment variables
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'secure-esports-tracker-secret-key')
+app.config['DATABASE_PATH'] = os.environ.get('DATABASE_PATH', 'secure_esports.db')
+app.config['JWT_KEY'] = os.environ.get('JWT_KEY', 'secure-esports-tracker-jwt-key-for-development')
 app.config['CLIENT_SECRETS'] = {}  # Store client secrets (in memory for demonstration)
 
 # Initialize storage for IoT data and alerts
 app.iot_data = {}
 app.device_alerts = {}
+
+# Configure CORS with specific origins (not wildcard)
+CORS(app, 
+    resources={r"/*": {"origins": ["http://localhost:3000", "https://dashboard.example.com"]}}, 
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Client-ID", "X-Request-Signature"],
+    supports_credentials=True
+)
 
 # Test data for simulated mouse
 app.iot_data['mouse-001'] = [
@@ -69,19 +85,6 @@ app.iot_data['mouse-001'] = [
     }
 ]
 
-def initialize_application():
-    # Test MQTT connection before starting services
-    mqtt_result = test_mqtt_connection(
-        mqtt_broker=config.SERVER_URL, 
-        mqtt_port=1883
-    )
-    
-    if not mqtt_result['success']:
-        logger.warning(f"MQTT broker connection failed: {mqtt_result['error']}")
-        # Implement fallback or retry logic
-    else:
-        logger.info(f"MQTT broker connection successful ({mqtt_result['connection_time']}s)")
-
 # Add test security alerts
 app.device_alerts['mouse-001'] = [
     {
@@ -95,21 +98,6 @@ app.device_alerts['mouse-001'] = [
         'severity': 'critical'
     }
 ]
-# Initialize CORS with more permissive settings for development
-CORS(app, 
-    resources={r"/*": {"origins": "*"}}, 
-    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Client-ID", "X-Request-Signature"],
-    supports_credentials=True
-)
-
-# Add CORS headers to all responses
-@app.after_request
-def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,X-Client-ID,X-Request-Signature'
-    response.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS'
-    return response
 
 # Simple in-memory data storage (replace with database in production)
 users = {
@@ -164,7 +152,8 @@ def register():
     if request.method == 'OPTIONS':
         return '', 204
         
-    data = request.json
+    # Sanitize input data
+    data = sanitize_input(request.json)
     username = data.get('username')
     email = data.get('email')
     password = data.get('password')
@@ -191,7 +180,7 @@ def register():
         'username': username
     })
 
-# Authentication decorator
+# Authentication decorator with improved security
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -208,14 +197,22 @@ def require_auth(f):
         token = auth_header.split(' ')[1]
         
         try:
-            # Debug: Log token
-            logger.info(f"Decoding token: {token[:10]}...")
+            # Decode token with explicit algorithm
+            if not isinstance(app.config['JWT_KEY'], bytes) and isinstance(app.config['JWT_KEY'], str):
+                jwt_key = app.config['JWT_KEY'].encode('utf-8')
+            else:
+                jwt_key = app.config['JWT_KEY']
+                
+            payload = jwt.decode(
+                token, 
+                jwt_key, 
+                algorithms=['HS256'],
+                options={"verify_signature": True, "verify_exp": True}
+            )
             
-            payload = jwt.decode(token, app.config['JWT_KEY'], algorithms=['HS256'])
             request.user = payload
+            logger.debug(f"Auth successful for user: {payload.get('sub')}")
             
-            # Debug: Log successful auth
-            logger.info(f"Auth successful for user: {payload.get('sub')}")
         except jwt.ExpiredSignatureError:
             log_security_event('auth_failure', {'reason': 'expired_token'})
             return jsonify({'error': 'Token expired'}), 401
@@ -270,7 +267,7 @@ def verify_signature(f):
     return decorated
 
 # Security event logging
-def log_security_event(event_type, details=None):
+def log_security_event(event_type, details=None, severity='info'):
     timestamp = datetime.now().isoformat()
     
     event = {
@@ -278,7 +275,7 @@ def log_security_event(event_type, details=None):
         'event_type': event_type,
         'ip_address': request.remote_addr if request else None,
         'details': details,
-        'severity': 'warning' if event_type.startswith('auth_failure') or event_type.startswith('signature_failure') else 'info'
+        'severity': 'warning' if event_type.startswith('auth_failure') or event_type.startswith('signature_failure') else severity
     }
     
     security_events.append(event)
@@ -341,7 +338,8 @@ def login():
     if request.method == 'OPTIONS':
         return '', 204
         
-    data = request.json
+    # Sanitize input data
+    data = sanitize_input(request.json)
     username = data.get('username')
     password = data.get('password')
     
@@ -354,22 +352,18 @@ def login():
         log_security_event('login_failure', {'username': username})
         return jsonify({'error': 'Invalid credentials'}), 401
         
-    # Generate JWT token
+    # Generate JWT token with explicit algorithm
     now = datetime.utcnow()
     token_data = {
         'sub': username,
         'role': user['role'],
         'iat': int(now.timestamp()),
-        'exp': int((now + timedelta(hours=24)).timestamp())
+        'exp': int((now + timedelta(hours=24)).timestamp()),
+        'jti': str(uuid.uuid4())  # Add unique token ID to prevent replay attacks
     }
     
-    # Debug: Print the key used for JWT encoding
-    logger.info(f"JWT Key type: {type(app.config['JWT_KEY'])}")
-    
+    # Use explicit algorithm 
     token = jwt.encode(token_data, app.config['JWT_KEY'], algorithm='HS256')
-    
-    # Debug: Log the token
-    logger.info(f"Generated token: {token[:10]}...")
     
     log_security_event('login_success', {'username': username})
     
@@ -396,17 +390,17 @@ def verify_token():
     token = auth_header.split(' ')[1]
     
     try:
-        # Debug: Log token being verified
-        logger.info(f"Verifying token: {token[:10]}...")
-        
-        payload = jwt.decode(token, app.config['JWT_KEY'], algorithms=['HS256'])
+        # Decode token with explicit algorithm
+        if not isinstance(app.config['JWT_KEY'], bytes) and isinstance(app.config['JWT_KEY'], str):
+            jwt_key = app.config['JWT_KEY'].encode('utf-8')
+        else:
+            jwt_key = app.config['JWT_KEY']
+            
+        payload = jwt.decode(token, jwt_key, algorithms=['HS256'])
         
         # Return user data
         username = payload.get('sub')
         role = payload.get('role', 'user')
-        
-        # Debug: Log successful verification
-        logger.info(f"Token verification successful for user: {username}")
         
         return jsonify({
             'username': username,
@@ -426,16 +420,18 @@ def verify_token():
 @app.route('/api/auth/token', methods=['POST', 'OPTIONS'])
 def get_token():
     """Generate authentication token for client"""
-    t
+    # Handle OPTIONS request for CORS preflight
     if request.method == 'OPTIONS':
         return '', 204
         
     try:
-        data = request.json
+        # Sanitize input data
+        data = sanitize_input(request.json)
         client_id = data.get('client_id')
         timestamp = data.get('timestamp')
         signature = data.get('signature')
         client_secret = data.get('client_secret')
+        nonce = data.get('nonce')  # Added for replay protection
         
         if not client_id or not timestamp:
             return jsonify({'error': 'Missing required parameters'}), 400
@@ -447,7 +443,6 @@ def get_token():
             
         # Find device
         device = devices.get(client_id)
-        
         
         if not device:
             if not client_secret:
@@ -467,8 +462,11 @@ def get_token():
         else:
             # If device exists but signature is required
             if signature:
-                # Verify signature
+                # Verify signature with nonce for replay protection
                 signature_data = f"{client_id}:{timestamp}"
+                if nonce:
+                    signature_data += f":{nonce}"
+                    
                 expected_signature = hmac.new(
                     device['client_secret'].encode(),
                     signature_data.encode(),
@@ -479,13 +477,14 @@ def get_token():
                     log_security_event('auth_failure', {'reason': 'signature_invalid', 'client_id': client_id})
                     return jsonify({'error': 'Invalid signature'}), 401
             
-        # Generate token
+        # Generate token with explicit algorithm
         now = datetime.utcnow()
         token_data = {
             'sub': client_id,
             'type': 'device',
             'iat': int(now.timestamp()),
-            'exp': int((now + timedelta(minutes=30)).timestamp())
+            'exp': int((now + timedelta(minutes=30)).timestamp()),
+            'jti': str(uuid.uuid4())  # Add unique token ID
         }
         
         token = jwt.encode(token_data, app.config['JWT_KEY'], algorithm='HS256')
@@ -510,7 +509,8 @@ def upload_metrics():
         return '', 204
         
     try:
-        data = request.json
+        # Sanitize input data
+        data = sanitize_input(request.json)
         client_id = data.get('client_id')
         encoded_data = data.get('data')
         
@@ -637,10 +637,6 @@ def get_devices():
     if request.method == 'OPTIONS':
         return '', 204
         
-    # Debug: Log request details
-    logger.info(f"Devices request received from IP: {request.remote_addr}")
-    logger.info(f"Headers: {dict(request.headers)}")
-    
     try:
         # Always show sample devices
         user_devices = []
@@ -655,11 +651,10 @@ def get_devices():
             }
             user_devices.append(device_info)
         
-        logger.info(f"Returning {len(user_devices)} devices")
         return jsonify({'devices': user_devices})
         
     except Exception as e:
-        logger.error(f"Error retrieving devices: {e}", exc_info=True)
+        logger.error(f"Error retrieving devices: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
 @app.route('/api/devices/register', methods=['POST', 'OPTIONS'])
@@ -671,7 +666,8 @@ def register_device():
         return '', 204
         
     try:
-        data = request.json
+        # Sanitize input data
+        data = sanitize_input(request.json)
         device_name = data.get('name')
         device_type = data.get('device_type', 'unknown')
         
@@ -803,7 +799,8 @@ def update_user_settings():
         return '', 204
         
     try:
-        data = request.json
+        # Sanitize input data
+        data = sanitize_input(request.json)
         username = request.user.get('sub')
         
         # In a real implementation, would update in database
@@ -815,8 +812,6 @@ def update_user_settings():
         logger.error(f"Error updating user settings: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
-
-
 # Route to handle IoT device commands
 @app.route('/api/device/<device_id>/command', methods=['POST', 'OPTIONS'])
 @require_auth
@@ -827,7 +822,14 @@ def send_device_command(device_id):
         return '', 204
         
     try:
-        data = request.json
+        # Sanitize input and validate device ID
+        from utils.sanitize import sanitize_input, is_safe_path
+        
+        # Sanitize device ID to prevent injection
+        if not re.match(r'^[a-zA-Z0-9\-_]+$', device_id):
+            return jsonify({'error': 'Invalid device ID format'}), 400
+            
+        data = sanitize_input(request.json)
         command = data.get('command')
         
         if not command:
@@ -854,42 +856,14 @@ def send_device_command(device_id):
         logger.error(f"Error sending device command: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
-@app.route('/api/debug/iot_data/<device_id>', methods=['GET'])
-def debug_iot_data(device_id):
-    """Debug endpoint to view IoT data without authentication"""
-    if not hasattr(app, 'iot_data'):
-        return jsonify({'error': 'No IoT data storage initialized'}), 404
-    
-    if device_id not in app.iot_data:
-        return jsonify({'error': f'No data for device {device_id}'}), 404
-    
-    return jsonify({'data': app.iot_data[device_id]})
-
-@app.route('/api/debug/device_alerts/<device_id>', methods=['GET'])
-def debug_device_alerts(device_id):
-    """Debug endpoint to view device alerts without authentication"""
-    if not hasattr(app, 'device_alerts'):
-        return jsonify({'error': 'No device alerts storage initialized'}), 404
-    
-    if device_id not in app.device_alerts:
-        return jsonify({'error': f'No alerts for device {device_id}'}), 404
-    
-    return jsonify({'alerts': app.device_alerts[device_id]})
-
 # ------- Main application entry point -------
 
 if __name__ == '__main__':
     print("Starting Secure Esports Equipment Performance Tracker Server...")
     print("Server available at http://localhost:5000")
-    print("Testing MQTT connection...")
-    result = test_mqtt_connection()
     
-    if result['success']:
-        print(f"\n MQTT connection successful!")
-        print(f" Connected in {result['connection_time']} seconds")
-    else:
-        print(f"\n❌ MQTT connection test failed!")
-        print(f"❌ Error: {result['error']}")
-
-
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Use environment variable for debug mode
+    debug_mode = os.environ.get('DEBUG', 'false').lower() == 'true'
+    
+    # In production, always set debug=False
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
