@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-"""
-Secure Esports Equipment Performance Tracker - Configuration Settings
-"""
-
 import os
 import uuid
 import socket
@@ -10,14 +5,12 @@ import hashlib
 import base64
 from cryptography.fernet import Fernet
 
-# Server connection settings
-SERVER_URL = "http://localhost:5000"  # Local development server
+SERVER_URL = "http://localhost:5000"  
 
-# Generate deterministic client ID from machine info for consistent identification
 hostname = socket.gethostname()
 mac_addresses = []
 
-# Get MAC addresses for consistent device identification
+
 try:
     import uuid
     from getmac import get_mac_address

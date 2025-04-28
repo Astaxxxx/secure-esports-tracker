@@ -35,6 +35,7 @@ Examples:
 """
     )
     
+    mqtt_test_parser = subparsers.add_parser('mqtt-test', help='Test MQTT broker connection')
     subparsers = parser.add_subparsers(dest='command', help='Command to execute')
     
     # Start command
@@ -129,6 +130,21 @@ def show_info():
     
     return 0
 
+def test_mqtt_connection_cmd():
+    """Run MQTT connection test from command line"""
+    print(f"Testing MQTT connection to {config.MQTT_BROKER}:{config.MQTT_PORT}...")
+    
+    result = test_mqtt_connection(config.MQTT_BROKER, config.MQTT_PORT)
+    
+    if result['success']:
+        print(f"\n✅ MQTT connection test successful!")
+        print(f"✅ Connected in {result['connection_time']} seconds")
+        return 0
+    else:
+        print(f"\n❌ MQTT connection test failed!")
+        print(f"❌ Error: {result['error']}")
+        return 1
+    
 def main():
     """Main entry point"""
     args = parse_arguments()
@@ -143,6 +159,8 @@ def main():
         return start_agent(args.offline)
     elif args.command == 'test':
         return test_connection()
+    elif args.command == 'mqtt-test':
+        return test_mqtt_connection_cmd()
     elif args.command == 'status':
         return check_status()
     elif args.command == 'info':

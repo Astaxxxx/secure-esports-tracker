@@ -16,7 +16,7 @@ import logging
 import threading
 from datetime import datetime, timedelta
 from functools import wraps
-
+from mqtt_utils import test_mqtt_connection
 from flask import Flask, request, jsonify, abort, render_template, Response, current_app
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -68,6 +68,19 @@ app.iot_data['mouse-001'] = [
         }
     }
 ]
+
+def initialize_application():
+    # Test MQTT connection before starting services
+    mqtt_result = test_mqtt_connection(
+        mqtt_broker=config.SERVER_URL, 
+        mqtt_port=1883
+    )
+    
+    if not mqtt_result['success']:
+        logger.warning(f"MQTT broker connection failed: {mqtt_result['error']}")
+        # Implement fallback or retry logic
+    else:
+        logger.info(f"MQTT broker connection successful ({mqtt_result['connection_time']}s)")
 
 # Add test security alerts
 app.device_alerts['mouse-001'] = [
@@ -413,7 +426,7 @@ def verify_token():
 @app.route('/api/auth/token', methods=['POST', 'OPTIONS'])
 def get_token():
     """Generate authentication token for client"""
-    # Handle OPTIONS request for CORS preflight
+    t
     if request.method == 'OPTIONS':
         return '', 204
         
@@ -427,7 +440,6 @@ def get_token():
         if not client_id or not timestamp:
             return jsonify({'error': 'Missing required parameters'}), 400
             
-        # Check timestamp to prevent replay attacks (within 5 minutes)
         current_time = int(time.time())
         if abs(current_time - int(timestamp)) > 300:
             log_security_event('auth_failure', {'reason': 'timestamp_invalid', 'client_id': client_id})
@@ -436,7 +448,7 @@ def get_token():
         # Find device
         device = devices.get(client_id)
         
-        # If device doesn't exist, register it with client_secret
+        
         if not device:
             if not client_secret:
                 return jsonify({'error': 'Client secret required for registration'}), 400
@@ -535,6 +547,7 @@ def upload_metrics():
     except Exception as e:
         logger.error(f"Error processing metrics: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+    
 
 @app.route('/api/analytics/performance', methods=['GET', 'OPTIONS'])
 @require_auth

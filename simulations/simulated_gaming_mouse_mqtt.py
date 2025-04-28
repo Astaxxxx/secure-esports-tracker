@@ -124,6 +124,16 @@ class SimulatedGamingMouse:
         self.running = True
         self.session_id = f"session_{int(time.time())}"
         
+        mqtt_result = test_mqtt_connection(
+        mqtt_broker=self.mqtt_broker,
+        mqtt_port=self.mqtt_port
+        )
+    
+        if not mqtt_result['success']:
+            logger.error(f"Cannot start simulation - MQTT broker unreachable: {mqtt_result['error']}")
+            self.running = False
+            return False
+        
         # Connect to MQTT broker
         try:
             self.client.connect(self.mqtt_broker, self.mqtt_port, 60)
