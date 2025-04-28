@@ -42,6 +42,39 @@ export const refreshToken = async () => {
 };
 
 /**
+ * Register a new user
+ * @param {string} username - User's username
+ * @param {string} email - User's email
+ * @param {string} password - User's password
+ * @returns {Object} - Registration status
+ */
+export const register = async (username, email, password) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username, email, password })
+    });
+    
+    if (!response.ok) {
+      if (response.status === 400) {
+        const data = await response.json();
+        throw new Error(data.error || 'Registration failed');
+      }
+      throw new Error('Registration failed');
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Registration error:', error);
+    throw error;
+  }
+};
+
+/**
  * Make an authenticated fetch request to the API
  * @param {string} endpoint - API endpoint (without base URL)
  * @param {Object} options - Fetch options

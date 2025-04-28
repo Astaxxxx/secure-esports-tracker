@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import '../App.css';
 import { login } from '../utils/api';
 
@@ -88,6 +88,10 @@ const Login = ({ onLogin }) => {
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
+        
+        <div style={{ marginTop: '20px', textAlign: 'center' }}>
+          <p>Don't have an account? <Link to="/register" style={{ color: 'var(--primary-color)' }}>Register</Link></p>
+        </div>
         
         <div className="login-footer" style={{ marginTop: '20px', textAlign: 'center' }}>
           <p>Track your gaming equipment performance securely</p>

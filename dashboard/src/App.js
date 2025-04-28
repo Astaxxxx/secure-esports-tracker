@@ -4,6 +4,7 @@ import './App.css';
 
 // Component imports
 import Login from './components/Login';
+import Register from './components/Register';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -20,8 +21,7 @@ function App() {
   const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
 
   // Check authentication on load
-// In your App.js or auth handling code
-useEffect(() => {
+  useEffect(() => {
     const checkAuth = async () => {
       try {
         const token = localStorage.getItem('authToken');
@@ -108,7 +108,11 @@ useEffect(() => {
             </div>
           </>
         ) : (
-          <Login onLogin={handleLogin} />
+          <Routes>
+            <Route path="/login" element={<Login onLogin={handleLogin} />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="*" element={<Navigate to="/login" />} />
+          </Routes>
         )}
       </div>
     </Router>

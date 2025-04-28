@@ -144,6 +144,40 @@ sessions = {}  # Will store session data
 # Security audit log
 security_events = []
 
+@app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
+def register():
+    """User registration endpoint"""
+    # Handle OPTIONS request for CORS preflight
+    if request.method == 'OPTIONS':
+        return '', 204
+        
+    data = request.json
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+    
+    if not username or not email or not password:
+        return jsonify({'error': 'Username, email, and password required'}), 400
+        
+    # Check if username already exists
+    if username in users:
+        return jsonify({'error': 'Username already exists'}), 400
+    
+    # For simplicity in the demo, store new user in memory
+    # In a real app, would store in database with proper password hashing
+    users[username] = {
+        'password': generate_password_hash(password),
+        'email': email,
+        'role': 'user'  # Default role for new users
+    }
+    
+    log_security_event('user_registered', {'username': username})
+    
+    return jsonify({
+        'message': 'Registration successful',
+        'username': username
+    })
+
 # Authentication decorator
 def require_auth(f):
     @wraps(f)
