@@ -881,4 +881,15 @@ def debug_device_alerts(device_id):
 if __name__ == '__main__':
     print("Starting Secure Esports Equipment Performance Tracker Server...")
     print("Server available at http://localhost:5000")
+    print("Testing MQTT connection...")
+    result = test_mqtt_connection()
+    
+    if result['success']:
+        print(f"\n✅ MQTT connection successful!")
+        print(f"✅ Connected in {result['connection_time']} seconds")
+    else:
+        print(f"\n❌ MQTT connection test failed!")
+        print(f"❌ Error: {result['error']}")
+
+
     app.run(debug=True, host='0.0.0.0', port=5000)
