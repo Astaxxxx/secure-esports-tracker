@@ -7,7 +7,7 @@ import paho.mqtt.client as mqtt
 from datetime import datetime
 
 class SimulatedGamingMouse:
-    """Simulates an IoT gaming mouse that sends performance data via MQTT"""
+    
     
     def __init__(self, device_id="mouse-001", mqtt_broker="localhost", mqtt_port=1883, 
                  mqtt_topic_prefix="iot/gaming/mouse", send_interval=1):
@@ -17,56 +17,51 @@ class SimulatedGamingMouse:
         self.mqtt_topic_prefix = mqtt_topic_prefix
         self.send_interval = send_interval
         self.dpi = 16000
-        self.polling_rate = 1000  # Hz
+        self.polling_rate = 1000 
         self.button_count = 8
         self.running = False
         self.session_id = None
         
-        # Performance metrics
+  
         self.clicks_per_second = 0
         self.movement_data = []
         self.connected = False
-        
-        # Attack detection settings - using simulation instead of raw sockets
+
         self.ping_count = 0
-        self.ping_threshold = 50  # Pings per second before considered an attack
+        self.ping_threshold = 50  
         self.under_attack = False
         self.attack_start_time = None
-        
-        # Initialize MQTT client
+       
         self.client = mqtt.Client(client_id=f"simulated-{self.device_id}")
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
-        
-        # Set up MQTT topics
+     
         self.data_topic = f"{self.mqtt_topic_prefix}/{self.device_id}/data"
         self.status_topic = f"{self.mqtt_topic_prefix}/{self.device_id}/status"
         self.security_topic = f"{self.mqtt_topic_prefix}/{self.device_id}/security"
         self.control_topic = f"{self.mqtt_topic_prefix}/{self.device_id}/control"
         
     def _on_connect(self, client, userdata, flags, rc):
-        """Callback when connected to MQTT broker"""
+    
         if rc == 0:
             print(f"Connected to MQTT broker at {self.mqtt_broker}:{self.mqtt_port}")
             self.connected = True
             
-            # Subscribe to control topic to receive commands
             self.client.subscribe(self.control_topic)
             self.client.on_message = self._on_message
-            
-            # Send initial status message
+      
             self._publish_status("online")
         else:
             print(f"Failed to connect to MQTT broker with code: {rc}")
             self.connected = False
     
     def _on_disconnect(self, client, userdata, rc):
-        """Callback when disconnected from MQTT broker"""
+   
         print(f"Disconnected from MQTT broker with code: {rc}")
         self.connected = False
     
     def _on_message(self, client, userdata, msg):
-        """Callback when message is received"""
+        
         try:
             payload = json.loads(msg.payload)
             if msg.topic == self.control_topic:
@@ -77,7 +72,7 @@ class SimulatedGamingMouse:
             print(f"Error processing message: {e}")
     
     def _handle_control_message(self, payload):
-        """Handle control messages from server"""
+      
         if 'command' in payload:
             command = payload['command']
             print(f"Received command: {command}")
@@ -102,11 +97,10 @@ class SimulatedGamingMouse:
                 self.start()
     
     def start(self):
-        """Start the simulated mouse"""
+      
         self.running = True
         self.session_id = f"session_{int(time.time())}"
-        
-        # Connect to MQTT broker
+    
         try:
             self.client.connect(self.mqtt_broker, self.mqtt_port, 60)
             self.client.loop_start()
@@ -114,12 +108,10 @@ class SimulatedGamingMouse:
             print(f"Failed to connect to MQTT broker: {e}")
             return False
         
-        # Start the main thread
         self.main_thread = threading.Thread(target=self._run)
         self.main_thread.daemon = True
         self.main_thread.start()
-        
-        # Start network monitoring thread
+    
         self.network_thread = threading.Thread(target=self._monitor_network)
         self.network_thread.daemon = True
         self.network_thread.start()
@@ -130,19 +122,16 @@ class SimulatedGamingMouse:
         return True
         
     def stop(self):
-        """Stop the simulated mouse"""
+      
         if self.running:
             self.running = False
-            
-            # Publish offline status
+           
             if self.connected:
                 self._publish_status("offline")
-                
-            # Stop MQTT client
+           
             self.client.loop_stop()
             self.client.disconnect()
             
-            # Wait for threads to complete
             if hasattr(self, 'main_thread') and self.main_thread.is_alive():
                 self.main_thread.join(timeout=2)
             if hasattr(self, 'network_thread') and self.network_thread.is_alive():
@@ -151,15 +140,13 @@ class SimulatedGamingMouse:
             print("Simulated gaming mouse stopped")
         
     def _generate_performance_data(self):
-        """Generate simulated performance data"""
-        # Generate random mouse clicks based on time of day (to simulate player activity)
+       
         hour = datetime.now().hour
-        if 9 <= hour <= 22:  # Gaming hours
+        if 9 <= hour <= 22:
             self.clicks_per_second = random.randint(1, 6)
-        else:  # Non-gaming hours
+        else:  
             self.clicks_per_second = random.randint(0, 2)
             
-        # Generate mouse movement data (x, y coordinates)
         for _ in range(self.clicks_per_second):
             self.movement_data.append({
                 'x': random.randint(0, 1920),
@@ -167,10 +154,9 @@ class SimulatedGamingMouse:
                 'timestamp': time.time()
             })
             
-        # Keep only the last 100 movement records
+     
         self.movement_data = self.movement_data[-100:]
         
-        # Advanced metrics specific to gaming mice
         avg_click_distance = 0
         if len(self.movement_data) > 1:
             distances = []
@@ -203,13 +189,13 @@ class SimulatedGamingMouse:
         }
         
     def _get_attack_duration(self):
-        """Calculate attack duration in seconds"""
+       
         if self.attack_start_time:
             return int(time.time() - self.attack_start_time)
         return 0
     
     def _publish_data(self, data):
-        """Publish data via MQTT"""
+        
         if not self.connected:
             return False
             
@@ -222,7 +208,7 @@ class SimulatedGamingMouse:
             return False
     
     def _publish_status(self, status):
-        """Publish device status via MQTT"""
+       
         if not self.connected and status != "offline":
             return False
             
@@ -239,7 +225,7 @@ class SimulatedGamingMouse:
             return False
     
     def _publish_security_alert(self, alert_type, details):
-        """Publish security alert via MQTT"""
+      
         if not self.connected:
             return False
             
@@ -257,20 +243,18 @@ class SimulatedGamingMouse:
             return False
     
     def _monitor_network(self):
-        """Simulated network monitoring that doesn't rely on raw sockets"""
+      
         while self.running:
             try:
-                # Reset ping counter every second
+              
                 self.ping_count = 0
                 
-                # For simulation purposes, occasionally simulate an attack
-                # 5% chance of simulated attack
+               
                 if random.random() < 0.05:
                     self.ping_count = random.randint(self.ping_threshold, self.ping_threshold + 50)
                 else:
                     self.ping_count = random.randint(0, self.ping_threshold - 10)
                     
-                # Sleep for a second to simulate the monitoring period
                 time.sleep(1)
                 
                 # Check if we're under attack
@@ -278,7 +262,7 @@ class SimulatedGamingMouse:
                     if not self.under_attack:
                         self.under_attack = True
                         self.attack_start_time = time.time()
-                        print(f"⚠️ ALERT: Device is under attack! Received {self.ping_count} pings in 1 second")
+                        print(f" ALERT: Device is under attack! Received {self.ping_count} pings in 1 second")
                         
                         # Publish attack alert
                         self._publish_security_alert('attack_detected', {
@@ -305,13 +289,12 @@ class SimulatedGamingMouse:
                 time.sleep(1)
     
     def _run(self):
-        """Main execution loop"""
+    
         while self.running:
-            # Generate and publish performance data
+    
             data = self._generate_performance_data()
             self._publish_data(data)
-            
-            # Sleep for the specified interval
+ 
             time.sleep(self.send_interval)
 
 def main():
@@ -333,7 +316,6 @@ def main():
         )
         
         if mouse.start():
-            # Keep the main thread running
             while True:
                 try:
                     time.sleep(1)

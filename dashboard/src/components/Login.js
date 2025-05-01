@@ -11,7 +11,6 @@ const Login = ({ onLogin }) => {
   const location = useLocation();
 
   useEffect(() => {
-    // Check if redirected due to expired session
     const queryParams = new URLSearchParams(location.search);
     const sessionExpired = queryParams.get('session') === 'expired';
     
@@ -98,11 +97,6 @@ const Login = ({ onLogin }) => {
           <p className="security-note" style={{ fontSize: '0.8rem', color: '#666' }}>
             All data is end-to-end encrypted
           </p>
-          <div style={{ marginTop: '20px', fontSize: '0.8rem' }}>
-            <p>For demo, use:</p>
-            <p>Username: admin, Password: admin</p>
-            <p>Username: user, Password: user</p>
-          </div>
         </div>
       </div>
     </div>

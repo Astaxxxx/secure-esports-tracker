@@ -31,55 +31,41 @@ const MouseButtonHeatmap = ({ deviceId }) => {
       } catch (err) {
         console.error('Error fetching mouse contact data:', err);
         setError(err.message);
-        // Generate fallback data for demonstration
         generateFallbackData();
       }
     };
     
     const generateFallbackData = () => {
-      // Create realistic fallback data showing contact points on the mouse surface
       const fallbackData = {
-        // Contact points heatmap (0-100 intensity scale)
         contact_points: {
-          // Top surface (main clicks)
-          'top_left': 92,       // Index finger position (left click)
-          'top_right': 74,      // Middle finger position (right click)
-          'top_middle': 45,     // Area between buttons
-          
-          // Side surfaces
-          'left_front': 87,     // Thumb front position
-          'left_back': 65,      // Thumb back position
-          'left_bottom': 53,    // Lower thumb rest area
-          'right_side': 28,     // Right side of mouse (pinky area)
-          
-          // Bottom contact areas
-          'palm_rest': 80,      // Palm contact area
-          'wrist_area': 50,     // Wrist contact point
+          'top_left': 92,
+          'top_right': 74,
+          'top_middle': 45,
+          'left_front': 87,
+          'left_back': 65,
+          'left_bottom': 53,
+          'right_side': 28,
+          'palm_rest': 80,
+          'wrist_area': 50,
         },
-        
-        // Pressure data (0-100 scale)
         pressure: {
-          'top_left': 88,       // Left click pressure
-          'top_right': 72,      // Right click pressure
-          'left_front': 92,     // Thumb pressure (side buttons)
-          'palm_rest': 65,      // Palm pressure
+          'top_left': 88,
+          'top_right': 72,
+          'left_front': 92,
+          'palm_rest': 65,
         },
-        
-        // Click count data
         click_data: {
-          'left_click': 6452,   // Count of left clicks
-          'right_click': 2341,  // Count of right clicks
-          'middle_click': 478,  // Count of middle clicks
-          'side_button_1': 965, // Count of side button 1 clicks
-          'side_button_2': 1247 // Count of side button 2 clicks
+          'left_click': 6452,
+          'right_click': 2341,
+          'middle_click': 478,
+          'side_button_1': 965,
+          'side_button_2': 1247
         },
-        
-        // Finger position data
         finger_position: {
           'index_finger': {
-            'x_offset': 2,      // Lateral position offset in mm (0 is centered)
-            'y_offset': -3,     // Forward/backward position offset (negative is forward)
-            'angle': 12         // Finger angle in degrees
+            'x_offset': 2,
+            'y_offset': -3,
+            'angle': 12
           },
           'middle_finger': {
             'x_offset': -1,
@@ -92,8 +78,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
             'angle': 22
           }
         },
-        
-        // Posture analysis
         posture_issues: [
           {
             'issue': 'excessive_wrist_extension',
@@ -106,26 +90,21 @@ const MouseButtonHeatmap = ({ deviceId }) => {
             'description': 'Your thumb is stretched too far to reach the side buttons'
           }
         ],
-        
         timestamp: new Date().toISOString()
       };
-      
       setHeatmapData(fallbackData);
       setLoading(false);
     };
     
     fetchHeatmapData();
     
-    // Change from continuous polling to a single initial fetch plus one after 10 seconds
-    // This prevents potential infinite loops while still showing updated data
     const refreshTimeout = setTimeout(() => {
       fetchHeatmapData();
-    }, 10000); // Refresh after 10 seconds
+    }, 10000); 
     
-    // Clean up the timeout when the component unmounts
     return () => clearTimeout(refreshTimeout);
     
-  }, [deviceId]); // Only re-run when deviceId changes
+  }, [deviceId]); 
   
   if (loading) {
     return (
@@ -136,8 +115,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
     );
   }
   
-  // If there was an error but we generated fallback data, we'll still render the visualization
-  // The fallback data should have been set in the error handler, so we check if heatmapData exists
   if (error && !heatmapData) {
     return (
       <div className="card">
@@ -147,16 +124,13 @@ const MouseButtonHeatmap = ({ deviceId }) => {
     );
   }
   
-  // Helper function to get color based on intensity
   const getHeatColor = (value) => {
-    // Scale from blue (low) to red (high)
     if (value < 20) return `rgba(0, 0, 255, ${value / 100})`;
     if (value < 50) return `rgba(0, ${255 - ((value - 20) * 255 / 30)}, 255, ${value / 100})`;
     if (value < 80) return `rgba(${((value - 50) * 255 / 30)}, 0, ${255 - ((value - 50) * 255 / 30)}, ${value / 100})`;
     return `rgba(255, 0, 0, ${value / 100})`;
   };
   
-  // Helper function to get text color based on background intensity
   const getTextColor = (value) => {
     return value > 50 ? 'white' : 'black';
   };
@@ -167,7 +141,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
       <p>IoT sensor data showing contact points and pressure on the physical mouse device</p>
       
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
-        {/* 3D mouse visualization with contact heatmap */}
         <div style={{ 
           position: 'relative',
           width: '400px', 
@@ -175,7 +148,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
           margin: '20px auto',
           perspective: '800px'
         }}>
-          {/* Top view of mouse */}
           <div style={{ 
             position: 'absolute',
             top: '50px',
@@ -188,7 +160,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
             transform: 'rotateX(45deg)',
             transformStyle: 'preserve-3d'
           }}>
-            {/* Left click area */}
             <div style={{ 
               position: 'absolute',
               top: '0',
@@ -206,8 +177,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
             }}>
               {heatmapData.contact_points.top_left}%
             </div>
-            
-            {/* Right click area */}
             <div style={{ 
               position: 'absolute',
               top: '0',
@@ -225,8 +194,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
             }}>
               {heatmapData.contact_points.top_right}%
             </div>
-            
-            {/* Scroll wheel area */}
             <div style={{ 
               position: 'absolute',
               top: '15px',
@@ -237,8 +204,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
               backgroundColor: getHeatColor(heatmapData.contact_points.top_middle),
               border: '1px solid #222'
             }}></div>
-            
-            {/* Palm rest area */}
             <div style={{ 
               position: 'absolute',
               bottom: '0',
@@ -257,8 +222,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
               {heatmapData.contact_points.palm_rest}%
             </div>
           </div>
-          
-          {/* Side view left (thumb area) */}
           <div style={{ 
             position: 'absolute',
             top: '100px',
@@ -270,7 +233,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
             transform: 'rotateY(-60deg)',
             transformStyle: 'preserve-3d'
           }}>
-            {/* Thumb front position (for side buttons) */}
             <div style={{ 
               position: 'absolute',
               top: '30px',
@@ -289,8 +251,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
             }}>
               {heatmapData.contact_points.left_front}%
             </div>
-            
-            {/* Thumb back position */}
             <div style={{ 
               position: 'absolute',
               top: '60px',
@@ -310,8 +270,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
               {heatmapData.contact_points.left_back}%
             </div>
           </div>
-          
-          {/* Side view right (pinky area) */}
           <div style={{ 
             position: 'absolute',
             top: '100px',
@@ -343,8 +301,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
             </div>
           </div>
         </div>
-        
-        {/* Click Statistics */}
         <div style={{ width: '100%', marginTop: '20px' }}>
           <h3>Button Usage Statistics</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
@@ -377,8 +333,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
             ))}
           </div>
         </div>
-        
-        {/* Posture Issues and Recommendations */}
         <div style={{ 
           width: '100%',
           marginTop: '20px',
@@ -388,7 +342,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
           border: '1px solid var(--primary-color)'
         }}>
           <h3 style={{ margin: '0 0 10px 0' }}>Ergonomic Analysis & Recommendations</h3>
-          
           {heatmapData.posture_issues && heatmapData.posture_issues.length > 0 ? (
             <ul style={{ margin: '0', paddingLeft: '20px' }}>
               {heatmapData.posture_issues.map((issue, index) => (
@@ -405,16 +358,6 @@ const MouseButtonHeatmap = ({ deviceId }) => {
           ) : (
             <p>No significant posture issues detected. Your hand position looks good!</p>
           )}
-          
-          {/* General recommendations */}
-          <h4 style={{ marginTop: '15px' }}>General Recommendations:</h4>
-          <ul style={{ margin: '0', paddingLeft: '20px' }}>
-            <li>Keep your wrist in a neutral position, not bent upward or downward</li>
-            <li>Adjust mouse sensitivity to reduce excessive movement</li>
-            <li>Position the mouse close enough to avoid stretching</li>
-            <li>Use a mouse size appropriate for your hand dimensions</li>
-            <li>Consider a vertical or ergonomic mouse design if discomfort persists</li>
-          </ul>
         </div>
       </div>
     </div>

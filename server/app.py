@@ -1,10 +1,4 @@
-#!/usr/bin/env python3
-"""
-Secure Esports Equipment Performance Tracker - Server Application
-Flask-based server for receiving, processing, and analyzing equipment performance data
-Enhanced with IoT device support and security alerts
-"""
-
+import re  
 import os
 import json
 import hmac
@@ -20,16 +14,12 @@ from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 
-# Import security middleware
 from security_middleware import setup_security_headers
 
-# Import sanitization utilities
 from utils.sanitize import sanitize_input
 
-# Import routes
 import routes.security
 
-# Configure logging with ISO format timestamps (not Unix timestamps)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -38,23 +28,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger('server')
 
-# Create Flask application
 app = Flask(__name__)
 
-# Apply security middleware
 app = setup_security_headers(app)
 
-# Configure application with environment variables
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'secure-esports-tracker-secret-key')
 app.config['DATABASE_PATH'] = os.environ.get('DATABASE_PATH', 'secure_esports.db')
 app.config['JWT_KEY'] = os.environ.get('JWT_KEY', 'secure-esports-tracker-jwt-key-for-development')
-app.config['CLIENT_SECRETS'] = {}  # Store client secrets (in memory for demonstration)
-
-# Initialize storage for IoT data and alerts
+app.config['CLIENT_SECRETS'] = {}  
 app.iot_data = {}
 app.device_alerts = {}
 
-# Configure CORS with specific origins (not wildcard)
 CORS(app, 
     resources={r"/*": {"origins": ["http://localhost:3000", "https://dashboard.example.com"]}}, 
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -62,7 +46,6 @@ CORS(app,
     supports_credentials=True
 )
 
-# Test data for simulated mouse
 app.iot_data['mouse-001'] = [
     {
         'device_id': 'mouse-001',
@@ -85,7 +68,6 @@ app.iot_data['mouse-001'] = [
     }
 ]
 
-# Add test security alerts
 app.device_alerts['mouse-001'] = [
     {
         'timestamp': datetime.now().isoformat(),
@@ -99,7 +81,6 @@ app.device_alerts['mouse-001'] = [
     }
 ]
 
-# Simple in-memory data storage (replace with database in production)
 users = {
     'admin': {
         'password': generate_password_hash('admin'),
@@ -111,7 +92,6 @@ users = {
     }
 }
 
-# Sample devices for demonstration purposes
 devices = {
     'device_1': {
         'client_id': 'device_1',
@@ -139,20 +119,18 @@ devices = {
     }
 }
 
-metrics = {}  # Will store performance metrics
-sessions = {}  # Will store session data
+metrics = {}  
+sessions = {}  
 
-# Security audit log
+
 security_events = []
 
 @app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
 def register():
-    """User registration endpoint"""
-    # Handle OPTIONS request for CORS preflight
+
     if request.method == 'OPTIONS':
         return '', 204
-        
-    # Sanitize input data
+ 
     data = sanitize_input(request.json)
     username = data.get('username')
     email = data.get('email')
@@ -160,17 +138,14 @@ def register():
     
     if not username or not email or not password:
         return jsonify({'error': 'Username, email, and password required'}), 400
-        
-    # Check if username already exists
+
     if username in users:
         return jsonify({'error': 'Username already exists'}), 400
-    
-    # For simplicity in the demo, store new user in memory
-    # In a real app, would store in database with proper password hashing
+
     users[username] = {
         'password': generate_password_hash(password),
         'email': email,
-        'role': 'user'  # Default role for new users
+        'role': 'user' 
     }
     
     log_security_event('user_registered', {'username': username})
@@ -180,11 +155,9 @@ def register():
         'username': username
     })
 
-# Authentication decorator with improved security
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        # Handle OPTIONS requests directly for CORS preflight
         if request.method == 'OPTIONS':
             return '', 204
             
@@ -197,7 +170,6 @@ def require_auth(f):
         token = auth_header.split(' ')[1]
         
         try:
-            # Decode token with explicit algorithm
             if not isinstance(app.config['JWT_KEY'], bytes) and isinstance(app.config['JWT_KEY'], str):
                 jwt_key = app.config['JWT_KEY'].encode('utf-8')
             else:
@@ -225,12 +197,10 @@ def require_auth(f):
             
         return f(*args, **kwargs)
     return decorated
-
-# Request signature verification decorator
 def verify_signature(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        # Handle OPTIONS requests directly for CORS preflight
+  
         if request.method == 'OPTIONS':
             return '', 204
             
@@ -240,8 +210,7 @@ def verify_signature(f):
         if not client_id or not signature:
             log_security_event('signature_failure', {'reason': 'missing_headers'})
             return jsonify({'error': 'Missing required headers'}), 400
-            
-        # Get client secret
+
         client_secret = app.config['CLIENT_SECRETS'].get(client_id)
         if not client_secret:
             if client_id in devices:
@@ -250,8 +219,7 @@ def verify_signature(f):
             else:
                 log_security_event('signature_failure', {'reason': 'unknown_client', 'client_id': client_id})
                 return jsonify({'error': 'Unknown client'}), 401
-            
-        # Verify signature
+
         request_data = json.dumps(request.json, sort_keys=True)
         expected_signature = hmac.new(
             client_secret.encode(),
@@ -266,7 +234,6 @@ def verify_signature(f):
         return f(*args, **kwargs)
     return decorated
 
-# Security event logging
 def log_security_event(event_type, details=None, severity='info'):
     timestamp = datetime.now().isoformat()
     
@@ -281,10 +248,7 @@ def log_security_event(event_type, details=None, severity='info'):
     security_events.append(event)
     logger.info(f"SECURITY EVENT: {event_type} - {details}")
 
-# Make the function accessible to the app
 app.log_security_event = log_security_event
-
-# Create a route_decorator object to pass to the security routes
 class RouteDecorator:
     def __init__(self):
         self.require_auth = require_auth
@@ -292,14 +256,12 @@ class RouteDecorator:
         
 app.route_decorator = RouteDecorator()
 
-# Register security routes
 security_routes = routes.security.register_security_routes(app)
 
-# --------- Routes ---------
+
 
 @app.route('/')
 def index():
-    """Simple frontend for demonstration"""
     return """
     <html>
         <head>
@@ -333,12 +295,10 @@ def index():
 
 @app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
 def login():
-    """User login endpoint"""
-    # Handle OPTIONS request for CORS preflight
+
     if request.method == 'OPTIONS':
         return '', 204
-        
-    # Sanitize input data
+
     data = sanitize_input(request.json)
     username = data.get('username')
     password = data.get('password')
@@ -351,18 +311,16 @@ def login():
     if not user or not check_password_hash(user['password'], password):
         log_security_event('login_failure', {'username': username})
         return jsonify({'error': 'Invalid credentials'}), 401
-        
-    # Generate JWT token with explicit algorithm
+
     now = datetime.utcnow()
     token_data = {
         'sub': username,
         'role': user['role'],
         'iat': int(now.timestamp()),
         'exp': int((now + timedelta(hours=24)).timestamp()),
-        'jti': str(uuid.uuid4())  # Add unique token ID to prevent replay attacks
+        'jti': str(uuid.uuid4())  #
     }
-    
-    # Use explicit algorithm 
+
     token = jwt.encode(token_data, app.config['JWT_KEY'], algorithm='HS256')
     
     log_security_event('login_success', {'username': username})
@@ -377,8 +335,7 @@ def login():
 
 @app.route('/api/auth/verify', methods=['GET', 'OPTIONS'])
 def verify_token():
-    """Verify authentication token and return user data"""
-    # Handle OPTIONS request for CORS preflight
+
     if request.method == 'OPTIONS':
         return '', 204
         
@@ -390,15 +347,14 @@ def verify_token():
     token = auth_header.split(' ')[1]
     
     try:
-        # Decode token with explicit algorithm
+
         if not isinstance(app.config['JWT_KEY'], bytes) and isinstance(app.config['JWT_KEY'], str):
             jwt_key = app.config['JWT_KEY'].encode('utf-8')
         else:
             jwt_key = app.config['JWT_KEY']
             
         payload = jwt.decode(token, jwt_key, algorithms=['HS256'])
-        
-        # Return user data
+
         username = payload.get('sub')
         role = payload.get('role', 'user')
         
@@ -419,19 +375,16 @@ def verify_token():
 
 @app.route('/api/auth/token', methods=['POST', 'OPTIONS'])
 def get_token():
-    """Generate authentication token for client"""
-    # Handle OPTIONS request for CORS preflight
     if request.method == 'OPTIONS':
         return '', 204
         
     try:
-        # Sanitize input data
         data = sanitize_input(request.json)
         client_id = data.get('client_id')
         timestamp = data.get('timestamp')
         signature = data.get('signature')
         client_secret = data.get('client_secret')
-        nonce = data.get('nonce')  # Added for replay protection
+        nonce = data.get('nonce')  
         
         if not client_id or not timestamp:
             return jsonify({'error': 'Missing required parameters'}), 400
@@ -440,8 +393,7 @@ def get_token():
         if abs(current_time - int(timestamp)) > 300:
             log_security_event('auth_failure', {'reason': 'timestamp_invalid', 'client_id': client_id})
             return jsonify({'error': 'Timestamp expired'}), 401
-            
-        # Find device
+
         device = devices.get(client_id)
         
         if not device:
@@ -460,9 +412,7 @@ def get_token():
             app.config['CLIENT_SECRETS'][client_id] = client_secret
             log_security_event('device_registered', {'client_id': client_id})
         else:
-            # If device exists but signature is required
             if signature:
-                # Verify signature with nonce for replay protection
                 signature_data = f"{client_id}:{timestamp}"
                 if nonce:
                     signature_data += f":{nonce}"
@@ -476,15 +426,14 @@ def get_token():
                 if not hmac.compare_digest(signature, expected_signature):
                     log_security_event('auth_failure', {'reason': 'signature_invalid', 'client_id': client_id})
                     return jsonify({'error': 'Invalid signature'}), 401
-            
-        # Generate token with explicit algorithm
+
         now = datetime.utcnow()
         token_data = {
             'sub': client_id,
             'type': 'device',
             'iat': int(now.timestamp()),
             'exp': int((now + timedelta(minutes=30)).timestamp()),
-            'jti': str(uuid.uuid4())  # Add unique token ID
+            'jti': str(uuid.uuid4())  
         }
         
         token = jwt.encode(token_data, app.config['JWT_KEY'], algorithm='HS256')
@@ -492,7 +441,7 @@ def get_token():
         
         return jsonify({
             'token': token,
-            'expires_in': 1800  # 30 minutes
+            'expires_in': 1800  
         })
         
     except Exception as e:
@@ -503,29 +452,23 @@ def get_token():
 @require_auth
 @verify_signature
 def upload_metrics():
-    """Receive encrypted metrics data from clients"""
-    # Handle OPTIONS request for CORS preflight
+
     if request.method == 'OPTIONS':
         return '', 204
         
     try:
-        # Sanitize input data
         data = sanitize_input(request.json)
         client_id = data.get('client_id')
         encoded_data = data.get('data')
         
         if not client_id or not encoded_data:
             return jsonify({'error': 'Missing required parameters'}), 400
-            
-        # Decode base64 data
         encrypted_data = base64.b64decode(encoded_data)
-        
-        # Find device
+
         device = devices.get(client_id)
         if not device:
             return jsonify({'error': 'Unknown device'}), 401
-            
-        # Store encrypted data (in production, would decrypt and store in database)
+
         timestamp = datetime.utcnow().isoformat()
         if client_id not in metrics:
             metrics[client_id] = []
@@ -534,9 +477,7 @@ def upload_metrics():
             'timestamp': timestamp,
             'encrypted_data': encrypted_data
         })
-        
-        # In production, would verify integrity and decrypt here
-        
+
         log_security_event('data_received', {
             'client_id': client_id,
             'data_size': len(encoded_data)
@@ -552,16 +493,12 @@ def upload_metrics():
 @app.route('/api/analytics/performance', methods=['GET', 'OPTIONS'])
 @require_auth
 def get_performance():
-    """Get performance analytics (simplified demo version)"""
-    # Handle OPTIONS request for CORS preflight
+
     if request.method == 'OPTIONS':
         return '', 204
         
     try:
         time_range = request.args.get('timeRange', 'day')
-        
-        # In a real implementation, would fetch and decrypt data from database
-        # For demonstration, return sample data
         sample_data = [
             {
                 'timestamp': (datetime.utcnow() - timedelta(minutes=50)).isoformat(),
@@ -604,18 +541,15 @@ def get_performance():
 @app.route('/api/security/logs', methods=['GET', 'OPTIONS'])
 @require_auth
 def get_security_logs():
-    """Get security logs (admin only)"""
-    # Handle OPTIONS request for CORS preflight
+
     if request.method == 'OPTIONS':
         return '', 204
         
     try:
-        # Check if user is admin
         if request.user.get('role') != 'admin':
             log_security_event('access_denied', {'endpoint': 'security/logs'})
             return jsonify({'error': 'Admin access required'}), 403
-            
-        # Filter logs by severity if requested
+
         severity = request.args.get('severity', 'all')
         
         if severity == 'all':
@@ -632,16 +566,13 @@ def get_security_logs():
 @app.route('/api/devices', methods=['GET', 'OPTIONS'])
 @require_auth
 def get_devices():
-    """Get registered devices"""
-    # Handle OPTIONS request for CORS preflight
+
     if request.method == 'OPTIONS':
         return '', 204
         
     try:
-        # Always show sample devices
         user_devices = []
         for device_id, device in devices.items():
-            # Remove sensitive information
             device_info = {
                 'client_id': device_id,
                 'name': device.get('name', f"Device {device_id[:8]}"),
@@ -660,25 +591,21 @@ def get_devices():
 @app.route('/api/devices/register', methods=['POST', 'OPTIONS'])
 @require_auth
 def register_device():
-    """Register a new device"""
-    # Handle OPTIONS request for CORS preflight
+
     if request.method == 'OPTIONS':
         return '', 204
         
     try:
-        # Sanitize input data
         data = sanitize_input(request.json)
         device_name = data.get('name')
         device_type = data.get('device_type', 'unknown')
         
         if not device_name:
             return jsonify({'error': 'Device name is required'}), 400
-            
-        # Generate device credentials
+
         client_id = str(uuid.uuid4())
         client_secret = base64.b64encode(os.urandom(32)).decode('utf-8')
-        
-        # Store device
+
         devices[client_id] = {
             'client_id': client_id,
             'client_secret': client_secret,
@@ -693,8 +620,6 @@ def register_device():
             'device_name': device_name,
             'device_type': device_type
         })
-        
-        # Return device credentials
         return jsonify({
             'client_id': client_id,
             'client_secret': client_secret,
@@ -710,16 +635,11 @@ def register_device():
 @app.route('/api/sessions/recent', methods=['GET', 'OPTIONS'])
 @require_auth
 def get_recent_sessions():
-    """Get recent sessions with performance data"""
-    # Handle OPTIONS request for CORS preflight
     if request.method == 'OPTIONS':
         return '', 204
         
     try:
         filter_type = request.args.get('filter', 'all')
-        
-        # In a real implementation, would fetch from database
-        # For demonstration, return sample data
         recent_sessions = [
             {
                 'id': '1',
@@ -743,8 +663,7 @@ def get_recent_sessions():
                 'device_name': 'Gaming PC'
             }
         ]
-        
-        # Filter sessions based on time if needed
+
         if filter_type == 'week':
             week_ago = datetime.utcnow() - timedelta(days=7)
             recent_sessions = [s for s in recent_sessions if datetime.fromisoformat(s['start_time']) > week_ago]
@@ -761,14 +680,12 @@ def get_recent_sessions():
 @app.route('/api/devices/stats', methods=['GET', 'OPTIONS'])
 @require_auth
 def get_device_stats():
-    """Get device usage statistics"""
-    # Handle OPTIONS request for CORS preflight
+
     if request.method == 'OPTIONS':
         return '', 204
         
     try:
-        # In a real implementation, would calculate from database
-        # For demonstration, return sample data
+
         device_stats = [
             {
                 'device_name': 'Gaming PC',
@@ -793,39 +710,32 @@ def get_device_stats():
 @app.route('/api/users/settings', methods=['PUT', 'OPTIONS'])
 @require_auth
 def update_user_settings():
-    """Update user settings"""
-    # Handle OPTIONS request for CORS preflight
+
     if request.method == 'OPTIONS':
         return '', 204
         
     try:
-        # Sanitize input data
+
         data = sanitize_input(request.json)
         username = request.user.get('sub')
-        
-        # In a real implementation, would update in database
-        # For demonstration, just return success
-        
+
         return jsonify({'status': 'success', 'message': 'Settings updated'})
         
     except Exception as e:
         logger.error(f"Error updating user settings: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
-# Route to handle IoT device commands
 @app.route('/api/device/<device_id>/command', methods=['POST', 'OPTIONS'])
 @require_auth
 def send_device_command(device_id):
-    """Send a command to an IoT device"""
-    # Handle OPTIONS request for CORS preflight
+
     if request.method == 'OPTIONS':
         return '', 204
         
     try:
-        # Sanitize input and validate device ID
+
         from utils.sanitize import sanitize_input, is_safe_path
-        
-        # Sanitize device ID to prevent injection
+
         if not re.match(r'^[a-zA-Z0-9\-_]+$', device_id):
             return jsonify({'error': 'Invalid device ID format'}), 400
             
@@ -834,13 +744,9 @@ def send_device_command(device_id):
         
         if not command:
             return jsonify({'error': 'Command required'}), 400
-            
-        # Check if device exists
+
         if device_id not in devices:
             return jsonify({'error': 'Device not found'}), 404
-            
-        # In a real implementation, would send command to device via MQTT
-        # For demonstration, just log it
         log_security_event('device_command', {
             'device_id': device_id,
             'command': command,
@@ -856,14 +762,8 @@ def send_device_command(device_id):
         logger.error(f"Error sending device command: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
-# ------- Main application entry point -------
-
 if __name__ == '__main__':
     print("Starting Secure Esports Equipment Performance Tracker Server...")
     print("Server available at http://localhost:5000")
-    
-    # Use environment variable for debug mode
     debug_mode = os.environ.get('DEBUG', 'false').lower() == 'true'
-    
-    # In production, always set debug=False
     app.run(debug=debug_mode, host='0.0.0.0', port=5000)

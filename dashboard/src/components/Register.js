@@ -26,14 +26,14 @@ const Register = () => {
       return;
     }
     
-    // Email validation
+ 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Please enter a valid email address');
       return;
     }
     
-    // Password strength validation
+    
     if (password.length < 8) {
       setError('Password must be at least 8 characters long');
       return;
@@ -43,10 +43,10 @@ const Register = () => {
     setError('');
     
     try {
-      // Call registration API
+      
       await registerUser(username, email, password);
       
-      // Registration successful
+     
       setSuccess('Registration successful! You can now log in.');
       setUsername('');
       setEmail('');

@@ -15,14 +15,14 @@ const Dashboard = ({ user }) => {
       setError(null);
       
       try {
-        // Get performance metrics
+        
         const token = localStorage.getItem('authToken');
         const headers = {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         };
         
-        // Fetch performance data
+        
         const performanceResponse = await fetch(
           `http://localhost:5000/api/analytics/performance?timeRange=${timeRange}`,
           { headers }
@@ -35,7 +35,6 @@ const Dashboard = ({ user }) => {
         const performanceData = await performanceResponse.json();
         setPerformanceData(performanceData.data);
         
-        // Fetch recent sessions
         const sessionsResponse = await fetch(
           'http://localhost:5000/api/sessions/recent',
           { headers }
@@ -47,8 +46,7 @@ const Dashboard = ({ user }) => {
         
         const sessionsData = await sessionsResponse.json();
         setRecentSessions(sessionsData.sessions);
-        
-        // Fetch device statistics
+
         const devicesResponse = await fetch(
           'http://localhost:5000/api/devices/stats',
           { headers }
@@ -72,7 +70,6 @@ const Dashboard = ({ user }) => {
     loadDashboardData();
   }, [timeRange]);
 
-  // Calculate averages
   const calculateAverage = (data, field) => {
     if (!data || data.length === 0) return 0;
     const sum = data.reduce((total, item) => total + (item[field] || 0), 0);
@@ -156,7 +153,7 @@ const Dashboard = ({ user }) => {
       <div className="card">
         <h2 className="card-title">APM Over Time</h2>
         <div>
-          {/* In a real implementation, we would use a chart library like Recharts */}
+          {}
           <p>Chart visualization would go here. Using mock data for demonstration.</p>
           <div style={{ 
             display: 'flex', 

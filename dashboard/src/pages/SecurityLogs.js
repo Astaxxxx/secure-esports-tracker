@@ -5,10 +5,9 @@ const SecurityLogs = ({ user }) => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('all'); // 'all', 'warning', 'critical'
+  const [filter, setFilter] = useState('all'); 
 
   useEffect(() => {
-    // Only admin users should access this page
     if (user.role !== 'admin') {
       setError('Access denied. Admin privileges required.');
       setLoading(false);
@@ -238,16 +237,6 @@ const SecurityLogs = ({ user }) => {
               Last 24 hours
             </p>
           </div>
-        </div>
-        
-        <div style={{ marginTop: '20px' }}>
-          <h3>Security Recommendations</h3>
-          <ul>
-            <li>Review failed authentication attempts</li>
-            <li>Verify all registered devices</li>
-            <li>Consider enabling multi-factor authentication</li>
-            <li>Rotate encryption keys every 90 days</li>
-          </ul>
         </div>
       </div>
     </div>

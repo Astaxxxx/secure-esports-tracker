@@ -5,7 +5,7 @@ const SessionHistory = ({ user }) => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('all'); // 'all', 'week', 'month'
+  const [filter, setFilter] = useState('all'); 
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -36,15 +36,13 @@ const SessionHistory = ({ user }) => {
     fetchSessions();
   }, [filter]);
 
-  // Format date for display
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleString();
   };
 
-  // Calculate average from sample data for demo
   const calculateAverage = (session) => {
-    // In real implementation, this would be fetched from the server
+ 
     return session.average_apm;
   };
 
@@ -215,7 +213,7 @@ const SessionHistory = ({ user }) => {
               justifyContent: 'space-around',
               gap: '10px'
             }}>
-              {/* Simple chart visualization for demo */}
+              {}
               {[60, 75, 90, 120, 80, 100, 110].map((value, index) => (
                 <div 
                   key={index}

@@ -52,7 +52,6 @@ const Settings = ({ user }) => {
 
   const handleSaveSettings = async () => {
     try {
-      // In a real implementation, would send to server
       const token = localStorage.getItem('authToken');
       const settings = {
         privacy: privacySettings,
@@ -60,17 +59,6 @@ const Settings = ({ user }) => {
         interface: interfaceSettings
       };
 
-      // Simulated API call
-      // const response = await fetch('http://localhost:5000/api/users/settings', {
-      //   method: 'PUT',
-      //   headers: {
-      //     'Authorization': `Bearer ${token}`,
-      //     'Content-Type': 'application/json'
-      //   },
-      //   body: JSON.stringify(settings)
-      // });
-
-      // For demo, just simulate success
       setSaveStatus('Settings saved successfully!');
       setTimeout(() => setSaveStatus(''), 3000);
     } catch (err) {

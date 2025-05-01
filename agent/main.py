@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Secure Esports Equipment Performance Tracker - Main Entry Point
-Provides a command-line interface for the agent with various commands
-"""
-
 import os
 import sys
 import time
@@ -13,7 +7,6 @@ from input_monitor import InputMonitor
 from secure_sender import SecureSender
 import config
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -22,7 +15,7 @@ logging.basicConfig(
 logger = logging.getLogger('main')
 
 def parse_arguments():
-    """Parse command-line arguments"""
+    
     parser = argparse.ArgumentParser(
         description='Secure Esports Equipment Performance Tracker Agent',
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -38,23 +31,21 @@ Examples:
     mqtt_test_parser = subparsers.add_parser('mqtt-test', help='Test MQTT broker connection')
     subparsers = parser.add_subparsers(dest='command', help='Command to execute')
     
-    # Start command
+
     start_parser = subparsers.add_parser('start', help='Start monitoring inputs')
     start_parser.add_argument('--offline', action='store_true', help='Start in offline mode')
     
-    # Test command
+
     test_parser = subparsers.add_parser('test', help='Test connection to server')
     
-    # Status command
     status_parser = subparsers.add_parser('status', help='Check agent status')
     
-    # Info command
+    
     info_parser = subparsers.add_parser('info', help='Display configuration information')
     
     return parser.parse_args()
 
 def start_agent(offline=False):
-    """Start the input monitoring agent"""
     print("Starting Secure Esports Equipment Performance Tracker Agent...")
     print(f"Device: {config.DEVICE_NAME} ({config.DEVICE_TYPE})")
     
@@ -62,7 +53,7 @@ def start_agent(offline=False):
         monitor = InputMonitor()
         if offline:
             monitor.offline_mode = True
-            print("⚠️ Starting in offline mode (data will be stored locally)")
+            print("Starting in offline mode (data will be stored locally)")
         monitor.start()
     except KeyboardInterrupt:
         print("\nAgent stopped by user.")
@@ -73,7 +64,7 @@ def start_agent(offline=False):
     return 0
 
 def test_connection():
-    """Test connection to the server"""
+
     print(f"Testing connection to server: {config.SERVER_URL}")
     
     try:
@@ -81,43 +72,39 @@ def test_connection():
         result = sender.test_connection()
         
         if result:
-            print("\n✅ Connection test successful!")
-            print("✅ Authentication successful!")
+            print("\n Connection test successful!")
+            print(" Authentication successful!")
             return 0
         else:
-            print("\n❌ Connection test failed!")
+            print("\n Connection test failed!")
             return 1
     except Exception as e:
         logger.error(f"Connection test error: {e}")
-        print(f"\n❌ Error: {e}")
+        print(f"\n Error: {e}")
         return 1
 
 def check_status():
-    """Check the agent's status"""
-    print("Secure Esports Equipment Performance Tracker Agent Status")
+    
+    print("Secure Esports ")
     print("--------------------------------------------------------")
     
-    # Check if server is reachable
     try:
         sender = SecureSender(config.SERVER_URL, config.CLIENT_ID, config.CLIENT_SECRET)
         server_reachable = sender.test_connection()
     except:
         server_reachable = False
     
-    # Check for local data
     local_data_dir = os.path.join(config.DATA_DIR, 'local_data')
     has_local_data = os.path.exists(local_data_dir) and len(os.listdir(local_data_dir)) > 0
     
-    # Print status information
-    print(f"Server connection:  {'✅ Connected' if server_reachable else '❌ Not connected'}")
-    print(f"Local data storage: {'✅ Yes' if has_local_data else '❌ No'}")
+    print(f"Server connection:  {'Connected' if server_reachable else ' Not connected'}")
+    print(f"Local data storage: {'Yes' if has_local_data else ' No'}")
     print(f"Data directory:     {config.DATA_DIR}")
     print(f"Log file:           {config.LOG_FILE}")
     
     return 0
 
 def show_info():
-    """Display agent configuration information"""
     print("Secure Esports Equipment Performance Tracker Agent Information")
     print("-----------------------------------------------------------")
     print(f"Device Name:        {config.DEVICE_NAME}")
@@ -131,18 +118,18 @@ def show_info():
     return 0
 
 def test_mqtt_connection_cmd():
-    """Run MQTT connection test from command line"""
+    ""
     print(f"Testing MQTT connection to {config.MQTT_BROKER}:{config.MQTT_PORT}...")
     
     result = test_mqtt_connection(config.MQTT_BROKER, config.MQTT_PORT)
     
     if result['success']:
-        print(f"\n✅ MQTT connection test successful!")
-        print(f"✅ Connected in {result['connection_time']} seconds")
+        print(f"\n MQTT connection test successful!")
+        print(f" Connected in {result['connection_time']} seconds")
         return 0
     else:
-        print(f"\n❌ MQTT connection test failed!")
-        print(f"❌ Error: {result['error']}")
+        print(f"\n MQTT connection test failed!")
+        print(f" Error: {result['error']}")
         return 1
     
 def main():

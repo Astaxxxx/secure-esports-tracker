@@ -21,7 +21,7 @@ const Header = ({ user, onLogout, darkMode, toggleDarkMode }) => {
             marginRight: '10px'
           }}
         >
-          {darkMode ? '☀️ Light' : '🌙 Dark'}
+          {darkMode ? ' Light' : ' Dark'}
         </button>
         
         <button 

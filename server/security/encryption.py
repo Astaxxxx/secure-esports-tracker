@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Secure Esports Equipment Performance Tracker - Encryption Utilities
-Provides encryption/decryption functions for secure data handling
-"""
-
 import os
 import base64
 import logging
@@ -14,11 +8,9 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 logger = logging.getLogger('security.encryption')
 
 def generate_key():
-    """Generate a secure encryption key"""
     return Fernet.generate_key()
 
 def derive_key(password, salt=None):
-    """Derive a key from a password using PBKDF2"""
     if salt is None:
         salt = os.urandom(16)
         
@@ -46,7 +38,6 @@ def encrypt_data(data, key):
         raise
 
 def decrypt_data(encrypted_data, key):
-    """Decrypt data using Fernet symmetric encryption"""
     try:
         cipher = Fernet(key)
         decrypted_data = cipher.decrypt(encrypted_data)
@@ -56,7 +47,6 @@ def decrypt_data(encrypted_data, key):
         raise
 
 def encrypt_sensitive_value(value, key):
-    """Encrypt a sensitive value for storage"""
     if not value:
         return None
         
@@ -72,7 +62,6 @@ def encrypt_sensitive_value(value, key):
         raise
 
 def decrypt_sensitive_value(encrypted_value, key):
-    """Decrypt a sensitive value from storage"""
     if not encrypted_value:
         return None
         
@@ -86,16 +75,11 @@ def decrypt_sensitive_value(encrypted_value, key):
         raise
         
 def rotate_key(old_key, data_to_reencrypt=None):
-    """Generate a new key and re-encrypt data with it"""
     new_key = generate_key()
     
     if data_to_reencrypt:
-        # Decrypt with old key
         decrypted = decrypt_data(data_to_reencrypt, old_key)
-        
-        # Re-encrypt with new key
         reencrypted = encrypt_data(decrypted, new_key)
-        
         return new_key, reencrypted
     
     return new_key

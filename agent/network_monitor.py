@@ -6,7 +6,6 @@ import requests
 SERVER_URL = "http://localhost:5000/api/security_log"
 DEVICE_ID = "esport-mouse-01"
 THRESHOLD_PINGS_PER_MIN = 30
-
 ping_counts = defaultdict(int)
 
 def process_packet(packet):

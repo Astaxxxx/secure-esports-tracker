@@ -1,5 +1,3 @@
-
-
 import os
 import json
 import time
@@ -13,7 +11,7 @@ import hashlib
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%dT%H:%M:%S',  # Use ISO format to avoid Unix timestamp disclosure
+    datefmt='%Y-%m-%dT%H:%M:%S',  
     filename='mqtt_subscriber.log'
 )
 logger = logging.getLogger('mqtt_subscriber')
@@ -28,23 +26,19 @@ class MQTTSubscriber:
         self.mqtt_topic_prefix = mqtt_topic_prefix
         self.db_uri = db_uri or os.environ.get('DB_URI', 'sqlite:///iot_devices.db')
         self.running = False
-        
-        # TLS configuration
+
         self.use_tls = use_tls
         self.ca_cert = ca_cert
         self.client_cert = client_cert
         self.client_key = client_key
-        
-        # Generate a secure client ID that doesn't expose identifying information
+
         self.client_id = f"server-subscriber-{hashlib.sha256(os.urandom(32)).hexdigest()[:8]}"
         
-        # Initialize MQTT client
         self.client = mqtt.Client(client_id=self.client_id)
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
-        
-        # Set up TLS if enabled
+
         if self.use_tls:
             self.client.tls_set(
                 ca_certs=self.ca_cert,
@@ -54,8 +48,7 @@ class MQTTSubscriber:
                 tls_version=ssl.PROTOCOL_TLS,
                 ciphers=None
             )
-            
-        # Set up authentication if credentials are provided
+
         mqtt_username = os.environ.get('MQTT_USERNAME')
         mqtt_password = os.environ.get('MQTT_PASSWORD')
         if mqtt_username and mqtt_password:
@@ -65,9 +58,8 @@ class MQTTSubscriber:
         
         if rc == 0:
             logger.info(f"Connected to MQTT broker at {self.mqtt_broker}:{self.mqtt_port}")
-            
-            # Subscribe to topics with QoS 1 or 2 for important messages
-            client.subscribe(f"{self.mqtt_topic_prefix}/+/security", qos=2)  # QoS 2 for critical security messages
+        
+            client.subscribe(f"{self.mqtt_topic_prefix}/+/security", qos=2)  
             client.subscribe(f"{self.mqtt_topic_prefix}/+/data", qos=1)
             client.subscribe(f"{self.mqtt_topic_prefix}/+/status", qos=1)
             
@@ -76,9 +68,9 @@ class MQTTSubscriber:
             logger.error(f"Failed to connect to MQTT broker with code: {rc}")
     
     def _on_message(self, client, userdata, msg):
-        """Callback when message is received with improved security"""
+
         try:
-            # Validate topic format to prevent injection
+    
             topic_parts = msg.topic.split('/')
             if len(topic_parts) < 3:
                 logger.warning(f"Received message with invalid topic format: {msg.topic}")
@@ -86,30 +78,24 @@ class MQTTSubscriber:
                 
             device_id = topic_parts[-2]
             message_type = topic_parts[-1]
-            
-            # Validate device_id format (prevent path traversal/injection)
+   
             if not self._is_valid_identifier(device_id):
                 logger.warning(f"Received message with invalid device ID: {device_id}")
                 return
-                
-            # Sanitize and validate message payload
+     
             try:
-                # Limit payload size to prevent DoS
-                if len(msg.payload) > 10240:  # 10KB limit
+                if len(msg.payload) > 10240: 
                     logger.warning(f"Message payload too large ({len(msg.payload)} bytes) from {device_id}")
                     return
                     
                 payload = json.loads(msg.payload)
-                
-                # Basic validation of payload structure
+
                 if not isinstance(payload, dict):
                     logger.warning(f"Invalid payload format from {device_id}: not a JSON object")
                     return
-                    
-                # Sanitize payload to prevent injection
+
                 payload = self._sanitize_payload(payload)
-                
-                # Process message based on type
+
                 if message_type == 'data':
                     self._process_data_message(device_id, payload)
                 elif message_type == 'status':
@@ -127,29 +113,27 @@ class MQTTSubscriber:
             logger.error(f"Error processing message: {str(e)}")
     
     def _is_valid_identifier(self, identifier):
-        """Validate identifier format to prevent injection"""
+
         import re
-        # Only allow alphanumeric characters, dashes, and underscores
+ 
         pattern = r'^[a-zA-Z0-9\-_]+$'
         return bool(re.match(pattern, identifier))
     
     def _sanitize_payload(self, payload):
-        """Sanitize payload to prevent injection attacks"""
+    
         if isinstance(payload, dict):
             return {k: self._sanitize_payload(v) for k, v in payload.items()}
         elif isinstance(payload, list):
             return [self._sanitize_payload(item) for item in payload]
         elif isinstance(payload, str):
-            # Basic HTML sanitization for strings
+           
             return payload.replace('<', '&lt;').replace('>', '&gt;')
         else:
             return payload
     
     def start(self):
-        """Start the MQTT subscriber with proper error handling"""
         self.running = True
-        
-        # Set up signal handler for graceful shutdown
+   
         import signal
         def signal_handler(sig, frame):
             logger.info("Received signal to shut down")
@@ -160,7 +144,6 @@ class MQTTSubscriber:
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
         
-        # Connect with retries
         retry_count = 0
         max_retries = 5
         while retry_count < max_retries:
@@ -169,14 +152,12 @@ class MQTTSubscriber:
                 self.client.connect(self.mqtt_broker, self.mqtt_port, keepalive=60)
                 self.client.loop_start()
                 
-                # Wait for connection to establish
                 time.sleep(2)
-                
-                # Check if connection was successful
+
                 if not self.client.is_connected():
                     logger.warning("Failed to connect, retrying...")
                     retry_count += 1
-                    time.sleep(2 ** retry_count)  # Exponential backoff
+                    time.sleep(2 ** retry_count)  
                     continue
                     
                 logger.info("MQTT subscriber started successfully")
@@ -190,17 +171,16 @@ class MQTTSubscriber:
                     self.running = False
                     return False
                     
-                time.sleep(2 ** retry_count)  # Exponential backoff
+                time.sleep(2 ** retry_count) 
         
         return False
     
     def stop(self):
-        """Stop the MQTT subscriber gracefully"""
+
         if self.running:
             self.running = False
             
             try:
-                # Properly disconnect from broker
                 logger.info("Disconnecting from MQTT broker")
                 self.client.loop_stop()
                 self.client.disconnect()
@@ -208,7 +188,6 @@ class MQTTSubscriber:
             except Exception as e:
                 logger.error(f"Error stopping MQTT subscriber: {str(e)}")
 
-# Use this function to test the MQTT connection securely
 def test_mqtt_connection(mqtt_broker="localhost", mqtt_port=1883, timeout=5,
                          use_tls=False, ca_cert=None, client_cert=None, client_key=None):
 
@@ -217,22 +196,18 @@ def test_mqtt_connection(mqtt_broker="localhost", mqtt_port=1883, timeout=5,
     import threading
     import hashlib
     
-    # Generate a secure client ID that doesn't expose identifying information
     client_id = f"mqtt-test-{hashlib.sha256(os.urandom(32)).hexdigest()[:8]}"
-    
-    # Results dictionary
+
     result = {
         'success': False,
         'connection_time': None,
         'error': None,
         'broker_info': f"{mqtt_broker}:{mqtt_port}"
     }
-    
-    # Connection flag and event
+  
     connected = False
     connection_event = threading.Event()
-    
-    # Define callbacks
+
     def on_connect(client, userdata, flags, rc):
         nonlocal connected
         if rc == 0:
@@ -255,11 +230,9 @@ def test_mqtt_connection(mqtt_broker="localhost", mqtt_port=1883, timeout=5,
     def on_disconnect(client, userdata, rc):
         if rc != 0:
             logger.warning(f"Unexpected disconnection from MQTT broker: {rc}")
-    
-    # Create client
+ 
     client = mqtt.Client(client_id=client_id)
-    
-    # Set up TLS if enabled
+
     if use_tls:
         try:
             client.tls_set(
@@ -273,40 +246,33 @@ def test_mqtt_connection(mqtt_broker="localhost", mqtt_port=1883, timeout=5,
         except Exception as e:
             result['error'] = f"TLS setup error: {str(e)}"
             return result
-    
-    # Set callbacks
+
     client.on_connect = on_connect
     client.on_disconnect = on_disconnect
     
     try:
-        # Record start time
         start_time = time.time()
-        
-        # Connect to broker with timeout
+ 
         client.connect_async(mqtt_broker, mqtt_port, 60)
         
-        # Start network loop in background thread
         client.loop_start()
-        
-        # Wait for connection or timeout
+
         if connection_event.wait(timeout):
-            # Calculate connection time
+
             connection_time = time.time() - start_time
             result['connection_time'] = round(connection_time, 3)
             result['success'] = connected
         else:
-            # Connection timeout
             result['error'] = f"Connection timeout after {timeout} seconds"
             logger.error(f"MQTT connection timeout after {timeout} seconds")
     
     except Exception as e:
-        # Handle connection exceptions
         error_msg = str(e)
         result['error'] = error_msg
         logger.error(f"Error connecting to MQTT broker: {error_msg}")
     
     finally:
-        # Clean up
+
         client.loop_stop()
         if connected:
             client.disconnect()

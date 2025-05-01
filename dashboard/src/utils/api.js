@@ -1,14 +1,8 @@
-/**
- * API Utilities for Secure Esports Equipment Performance Tracker
- * Provides functions for authenticated API requests and error handling
- */
 
-// Base URL for API requests
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 /**
- * Refresh the authentication token
- * @returns {Promise<boolean>} Success status
+ * @returns {Promise<boolean>}
  */
 export const refreshToken = async () => {
   try {
@@ -17,7 +11,7 @@ export const refreshToken = async () => {
       return false;
     }
 
-    // Use the current token to request a new one
+    
     const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: 'POST',
       headers: {
@@ -43,10 +37,10 @@ export const refreshToken = async () => {
 
 /**
  * Register a new user
- * @param {string} username - User's username
- * @param {string} email - User's email
- * @param {string} password - User's password
- * @returns {Object} - Registration status
+ * @param {string} username 
+ * @param {string} email 
+ * @param {string} password -
+ * @returns {Object} 
  */
 export const register = async (username, email, password) => {
   try {
@@ -75,10 +69,10 @@ export const register = async (username, email, password) => {
 };
 
 /**
- * Make an authenticated fetch request to the API
- * @param {string} endpoint - API endpoint (without base URL)
- * @param {Object} options - Fetch options
- * @returns {Promise} - Fetch promise
+ * 
+ * @param {string} endpoint 
+ * @param {Object} options -
+ * @returns {Promise} 
  */
 export const fetchWithAuth = async (endpoint, options = {}, retryCount = 0) => {
   // Get auth token from localStorage
@@ -88,41 +82,35 @@ export const fetchWithAuth = async (endpoint, options = {}, retryCount = 0) => {
     throw new Error('Authentication required');
   }
   
-  // Set up headers with authentication
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`,
     ...options.headers
   };
   
-  // Make request with authentication
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers
     });
-    
-    // Handle token expiration
+
     if (response.status === 401) {
       console.log('Token expired, attempting to refresh...');
-      
-      // Only try to refresh once to prevent infinite loops
+ 
       if (retryCount === 0) {
         const refreshed = await refreshToken();
         if (refreshed) {
           console.log('Token refreshed, retrying request');
-          // Retry the request with the new token
+
           return fetchWithAuth(endpoint, options, retryCount + 1);
         }
       }
-      
-      // Clear invalid token and redirect to login
+
       localStorage.removeItem('authToken');
       window.location.href = '/login?session=expired';
       throw new Error('Authentication token expired');
     }
     
-    // Handle other error status codes
     if (!response.ok) {
       let errorMessage;
       try {
@@ -142,10 +130,10 @@ export const fetchWithAuth = async (endpoint, options = {}, retryCount = 0) => {
 };
 
 /**
- * Login user and get authentication token
- * @param {string} username - User's username
- * @param {string} password - User's password
- * @returns {Object} - User data and token
+ * Login user 
+ * @param {string} username 
+ * @param {string} password 
+ * @returns {Object} 
  */
 export const login = async (username, password) => {
   try {
@@ -173,8 +161,8 @@ export const login = async (username, password) => {
 };
 
 /**
- * Verify the current authentication token
- * @returns {Object} - User data if token is valid
+ * Verify 
+ * @returns {Object} 
  */
 export const verifyToken = async () => {
   try {
@@ -203,7 +191,7 @@ export const verifyToken = async () => {
 };
 
 /**
- * Logout user and clear authentication
+ * Logout user
  */
 export const logout = () => {
   localStorage.removeItem('authToken');
@@ -212,9 +200,9 @@ export const logout = () => {
 
 /**
  * Register a new device
- * @param {string} deviceName - Name of the device
- * @param {string} deviceType - Type of device (keyboard, mouse, system)
- * @returns {Object} - Device data including client_id and client_secret
+ * @param {string} deviceName 
+ * @param {string} deviceType 
+ * @returns {Object} 
  */
 export const registerDevice = async (deviceName, deviceType) => {
   try {
@@ -234,8 +222,8 @@ export const registerDevice = async (deviceName, deviceType) => {
 };
 
 /**
- * Get all registered devices
- * @returns {Array} - List of devices
+ * 
+ * @returns {Array} 
  */
 export const getDevices = async () => {
   try {
@@ -244,16 +232,15 @@ export const getDevices = async () => {
     return data.devices || [];
   } catch (error) {
     console.error('Error fetching devices:', error);
-    // Return empty array as fallback
     return [];
   }
 };
 
 /**
- * Update device status
- * @param {string} deviceId - Device ID
- * @param {string} status - New status ('active' or 'disabled')
- * @returns {Object} - Updated device data
+ * 
+ * @param {string} deviceId 
+ * @param {string} status 
+ * @returns {Object} 
  */
 export const updateDeviceStatus = async (deviceId, status) => {
   try {
@@ -270,9 +257,9 @@ export const updateDeviceStatus = async (deviceId, status) => {
 };
 
 /**
- * Get performance data for a specific time range
- * @param {string} timeRange - 'day', 'week', 'month'
- * @returns {Array} - Performance data
+ * 
+ * @param {string} timeRange 
+ * @returns {Array} 
  */
 export const getPerformanceData = async (timeRange = 'day') => {
   try {
@@ -281,7 +268,6 @@ export const getPerformanceData = async (timeRange = 'day') => {
     return data.data || [];
   } catch (error) {
     console.error('Performance data error:', error);
-    // Return fallback data
     return [
       {
         timestamp: new Date(Date.now() - 50 * 60000).toISOString(),
@@ -318,10 +304,10 @@ export const getPerformanceData = async (timeRange = 'day') => {
 };
 
 /**
- * Get recent sessions with optional filtering
- * @param {number} limit - Number of sessions to return
- * @param {string} filter - Filter by timeframe ('all', 'week', 'month')
- * @returns {Array} - Recent sessions
+ * 
+ * @param {number} limit 
+ * @param {string} filter 
+ * @returns {Array}
  */
 export const getRecentSessions = async (limit = 5, filter = 'all') => {
   try {
@@ -330,7 +316,7 @@ export const getRecentSessions = async (limit = 5, filter = 'all') => {
     return data.sessions || [];
   } catch (error) {
     console.error('Recent sessions error:', error);
-    // Return fallback data
+
     return [
       {
         id: '1',
@@ -358,10 +344,10 @@ export const getRecentSessions = async (limit = 5, filter = 'all') => {
 };
 
 /**
- * Get security audit logs
- * @param {string} severity - Filter by severity ('all', 'info', 'warning', 'critical')
- * @param {number} limit - Number of logs to return
- * @returns {Array} - Security logs
+ * 
+ * @param {string} severity 
+ * @param {number} limit 
+ * @returns {Array} 
  */
 export const getSecurityLogs = async (severity = 'all', limit = 100) => {
   try {
@@ -370,7 +356,7 @@ export const getSecurityLogs = async (severity = 'all', limit = 100) => {
     return data.logs || [];
   } catch (error) {
     console.error('Security logs error:', error);
-    // Return fallback data for security logs
+    
     return [
       {
         id: 1,
@@ -401,9 +387,9 @@ export const getSecurityLogs = async (severity = 'all', limit = 100) => {
 };
 
 /**
- * Update user settings
- * @param {Object} settings - Settings to update
- * @returns {Object} - Updated user data
+ * Update
+ * @param {Object} settings 
+ * @returns {Object} 
  */
 export const updateUserSettings = async (settings) => {
   try {
@@ -415,15 +401,14 @@ export const updateUserSettings = async (settings) => {
     return await response.json();
   } catch (error) {
     console.error('Settings update error:', error);
-    // Return success status for offline support
     return { status: 'success', message: 'Settings updated (offline mode)' };
   }
 };
 
 /**
- * Get IoT device data for a specific device
- * @param {string} deviceId - The device ID
- * @returns {Promise<Object>} - Device data
+ * 
+ * @param {string} deviceId 
+ * @returns {Promise<Object>}
  */
 export const getIoTDeviceData = async (deviceId) => {
   try {
@@ -432,7 +417,6 @@ export const getIoTDeviceData = async (deviceId) => {
     return data;
   } catch (error) {
     console.error('Error fetching IoT device data:', error);
-    // Return fallback data for testing
     return { 
       data: [{
         device_id: deviceId,
@@ -458,9 +442,9 @@ export const getIoTDeviceData = async (deviceId) => {
 };
 
 /**
- * Get security alerts for a specific device
- * @param {string} deviceId - The device ID
- * @returns {Promise<Object>} - Security alerts
+ * 
+ * @param {string} deviceId 
+ * @returns {Promise<Object>} 
  */
 export const getDeviceSecurityAlerts = async (deviceId) => {
   try {
@@ -469,7 +453,6 @@ export const getDeviceSecurityAlerts = async (deviceId) => {
     return data;
   } catch (error) {
     console.error('Error fetching security alerts:', error);
-    // Return fallback data for testing
     return { 
       alerts: [{
         timestamp: new Date().toISOString(),
@@ -486,11 +469,11 @@ export const getDeviceSecurityAlerts = async (deviceId) => {
 };
 
 /**
- * Send a command to an IoT device
- * @param {string} deviceId - The device ID
- * @param {string} command - The command to send
- * @param {Object} params - Command parameters
- * @returns {Promise<Object>} - Command result
+ * 
+ * @param {string} deviceId 
+ * @param {string} command 
+ * @param {Object} params 
+ * @returns {Promise<Object>} 
  */
 export const sendDeviceCommand = async (deviceId, command, params = {}) => {
   try {

@@ -3,14 +3,12 @@ import MouseButtonHeatmap from '../components/MouseButtonHeatmap';
 import { fetchWithAuth } from '../utils/api';
 import '../App.css';
 
-// Separated Heatmap component
 const DeviceHeatmap = ({ deviceId }) => {
   const [heatmapData, setHeatmapData] = useState(null);
   const [heatmapType, setHeatmapType] = useState('position');
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    // Fetch heatmap data from the server
     const fetchHeatmapData = async () => {
       if (!deviceId) return;
       
@@ -32,33 +30,28 @@ const DeviceHeatmap = ({ deviceId }) => {
         setLoading(false);
       } catch (err) {
         console.error('Error fetching heatmap data:', err);
-        // Generate some dummy heatmap data if the API fails
+
         generateDummyHeatmap();
       }
     };
     
     const generateDummyHeatmap = () => {
-      // Create a 108×192 grid (scaled down 1920×1080 by factor of 10)
+ 
       const width = 192;
       const height = 108;
       const positionData = Array(height).fill().map(() => Array(width).fill(0));
       const clickData = Array(height).fill().map(() => Array(width).fill(0));
-      
-      // Generate some random hotspots
-      // Center area (where most movement happens)
+
       for (let i = 0; i < 5000; i++) {
         const x = Math.floor(Math.random() * width * 0.6 + width * 0.2);
         const y = Math.floor(Math.random() * height * 0.6 + height * 0.2);
         positionData[y][x] += Math.random() * 2 + 1;
         
-        // Clicks are less frequent
         if (Math.random() < 0.3) {
           clickData[y][x] += Math.random() * 5 + 1;
         }
       }
-      
-      // Add hotspots for common UI elements (top-left, bottom, etc.)
-      // Top-left (menu area)
+ 
       for (let i = 0; i < 1000; i++) {
         const x = Math.floor(Math.random() * width * 0.2);
         const y = Math.floor(Math.random() * height * 0.2);
@@ -68,7 +61,6 @@ const DeviceHeatmap = ({ deviceId }) => {
         }
       }
       
-      // Bottom center (action bar area)
       for (let i = 0; i < 1000; i++) {
         const x = Math.floor(Math.random() * width * 0.6 + width * 0.2);
         const y = Math.floor(Math.random() * height * 0.2 + height * 0.8);
@@ -90,11 +82,9 @@ const DeviceHeatmap = ({ deviceId }) => {
     };
     
     fetchHeatmapData();
-    
-    // Set up a controlled interval for refreshing data
+ 
     const intervalId = setInterval(fetchHeatmapData, 30000); // Refresh every 30 seconds
-    
-    // Clean up interval on unmount
+
     return () => clearInterval(intervalId);
   }, [deviceId]);
   
@@ -107,15 +97,14 @@ const DeviceHeatmap = ({ deviceId }) => {
     );
   }
   
-  // Get the current heatmap based on user selection
   const currentHeatmap = heatmapType === 'position' 
     ? heatmapData.position_heatmap 
     : heatmapData.click_heatmap;
   
-  // Color mapping function
+
   const getColor = (value) => {
-    // Color scale from blue (cold) to red (hot)
-    if (value === 0) return 'rgba(0, 0, 0, 0)'; // Transparent for no data
+
+    if (value === 0) return 'rgba(0, 0, 0, 0)'; 
     if (value < 10) return `rgba(0, 0, 255, ${value / 20})`;
     if (value < 30) return `rgba(0, ${255 - (value - 10) * 8}, 255, 0.5)`;
     if (value < 60) return `rgba(${(value - 30) * 8}, 255, ${255 - (value - 30) * 8}, 0.6)`;
@@ -151,7 +140,7 @@ const DeviceHeatmap = ({ deviceId }) => {
         overflow: 'hidden',
         backgroundColor: '#111'
       }}>
-        {/* Visualization canvas */}
+        {}
         <div style={{
           position: 'absolute',
           top: 0,
@@ -179,7 +168,7 @@ const DeviceHeatmap = ({ deviceId }) => {
           )}
         </div>
         
-        {/* Add a simulated game screen overlay for reference */}
+        {}
         <div style={{
           position: 'absolute',
           top: '10%',
@@ -217,7 +206,7 @@ const IoTDevices = ({ user }) => {
   const [isRefreshing, setIsRefreshing] = useState(true);
 
   useEffect(() => {
-    // Load devices from API
+
     const fetchDevices = async () => {
       try {
         const response = await fetchWithAuth('/api/devices');
@@ -227,8 +216,7 @@ const IoTDevices = ({ user }) => {
 
         const data = await response.json();
         console.log("Received devices data:", data);
-        
-        // Filter IoT devices with updated device types
+
         const iotDevices = data.devices.filter(device => 
           device.device_type === 'mouse' || 
           device.device_type === 'keyboard' || 
@@ -237,10 +225,9 @@ const IoTDevices = ({ user }) => {
           device.device_type === 'keyboard_sensor' || 
           device.device_type === 'headset_sensor'
         );
-        
-        // Rename devices to be more IoT-specific
+
         const renamedDevices = iotDevices.map(device => {
-          // Update names to better indicate IoT sensor nature
+
           if (device.device_type === 'mouse' || device.name.includes('Mouse')) {
             return {
               ...device,
@@ -266,16 +253,14 @@ const IoTDevices = ({ user }) => {
         });
         
         setDevices(renamedDevices);
-        
-        // Select first device by default
+
         if (renamedDevices.length > 0 && !selectedDevice) {
           setSelectedDevice(renamedDevices[0].client_id);
         }
       } catch (err) {
         console.error('Error fetching devices:', err);
         setError('Failed to load devices. Please try again.');
-        
-        // Set fallback devices for demo purposes with IoT sensor names
+  
         const fallbackDevices = [
           {
             client_id: 'mouse-001',
@@ -300,15 +285,13 @@ const IoTDevices = ({ user }) => {
     };
 
     fetchDevices();
-    
-    // Poll for devices every 30 seconds
+
     const deviceInterval = setInterval(fetchDevices, 30000);
     
     return () => clearInterval(deviceInterval);
   }, [selectedDevice]);
 
   useEffect(() => {
-    // Set up the data refresh interval
     let dataInterval;
     
     if (isRefreshing && selectedDevice) {
@@ -322,11 +305,7 @@ const IoTDevices = ({ user }) => {
           console.error('Error refreshing data:', err);
         }
       };
-      
-      // Fetch immediately
       fetchData();
-      
-      // Then set interval
       dataInterval = setInterval(fetchData, refreshInterval * 1000);
     }
     
@@ -354,7 +333,7 @@ const IoTDevices = ({ user }) => {
       setDeviceData(result.data || []);
     } catch (err) {
       console.error('Error fetching device data:', err);
-      // Use fallback data on error with IoT-specific metrics
+
       setDeviceData([{
         device_id: deviceId,
         session_id: 'fallback-session',
@@ -436,18 +415,16 @@ const IoTDevices = ({ user }) => {
     return recent.status;
   };
 
-  // Fixed function to properly reflect attack status
   const renderDeviceStatus = () => {
     const status = getDeviceStatus();
-    // Check for critical alerts in the last minute to determine attack status
+ 
     const hasRecentCriticalAlert = securityAlerts.some(alert => {
       const alertTime = new Date(alert.timestamp);
       const now = new Date();
       const timeDiff = (now - alertTime) / 1000; // in seconds
       return alert.severity === 'critical' && timeDiff < 60;
     });
-    
-    // Consider the device under attack if either status says so OR there's a recent critical alert
+ 
     const isAttacked = (status && status.under_attack) || hasRecentCriticalAlert;
     
     return (
@@ -498,12 +475,10 @@ const IoTDevices = ({ user }) => {
     );
   };
 
-  // Enhanced to display IoT-specific metrics with better descriptions
   const renderDeviceMetrics = () => {
     const metrics = getLatestMetrics();
     if (!metrics) return <p>No metrics available</p>;
-    
-    // Get device type for context-specific descriptions
+ 
     const selectedDeviceObj = devices.find(d => d.client_id === selectedDevice);
     const deviceType = selectedDeviceObj ? selectedDeviceObj.device_type : 'mouse_sensor';
     
@@ -511,14 +486,14 @@ const IoTDevices = ({ user }) => {
       <div className="card">
         <h2 className="card-title">Real-Time IoT Performance Metrics</h2>
         
-        {/* IoT Device Description */}
+        {}
         <div style={{ marginBottom: '15px' }}>
           <p><strong>Device Type:</strong> {deviceType} - A specialized IoT sensor system equipped with accelerometers, gyroscopes, and pressure sensors to capture precise gaming input data and transmit it securely across the network.</p>
           <p><strong>IoT Capabilities:</strong> Edge processing, wireless connectivity, real-time data transmission, anomaly detection, encrypted communication</p>
           <p><strong>Network Protocol:</strong> MQTT over TLS 1.3 with certificate-based authentication</p>
         </div>
         
-        {/* Metrics with descriptions */}
+        {}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
           {Object.entries(metrics).map(([key, value]) => (
             <div key={key} style={{ flex: '1', minWidth: '150px' }}>
@@ -567,7 +542,6 @@ const IoTDevices = ({ user }) => {
     );
   };
 
-  // Helper functions for better metric presentation
   const formatMetricName = (key) => {
     // Convert snake_case to Title Case
     return key.split('_').map(word => 
@@ -596,7 +570,6 @@ const IoTDevices = ({ user }) => {
     return descriptions[key] || `IoT sensor data metric for ${deviceType}`;
   };
 
-  // Enhanced security alerts with better formatting
   const renderSecurityAlerts = () => {
     if (!securityAlerts || securityAlerts.length === 0) {
       return (
@@ -762,7 +735,7 @@ const IoTDevices = ({ user }) => {
           {renderDeviceMetrics()}
           {renderSecurityAlerts()}
           <DeviceHeatmap deviceId={selectedDevice} />
-          {/* Add the Mouse Button Usage Heatmap component */}
+          {}
           {devices.find(d => d.client_id === selectedDevice)?.device_type.includes('mouse') && (
             <MouseButtonHeatmap deviceId={selectedDevice} />
           )}
@@ -779,60 +752,7 @@ const IoTDevices = ({ user }) => {
             </div>
           )}
         </div>
-      )}
-
-      <div className="card">
-        <h2 className="card-title">IoT Security Recommendations</h2>
-        <ul>
-          <li>Keep IoT firmware updated with the latest security patches</li>
-          <li>Implement network segmentation to isolate IoT devices</li>
-          <li>Use strong, unique credentials for each device</li>
-          <li>Enable TLS for all device communication</li>
-          <li>Regularly audit device access and traffic patterns</li>
-          <li>Implement intrusion detection at the edge gateway</li>
-          <li>Ensure proper certificate management and rotation</li>
-        </ul>
-        
-        <div style={{ marginTop: '20px', padding: '15px', backgroundColor: 'rgba(98, 0, 234, 0.1)', borderRadius: '8px' }}>
-          <h3 style={{ margin: '0 0 10px 0' }}>DDoS Attack Protection for IoT Gaming Sensors</h3>
-          <p style={{ margin: '0 0 10px 0' }}>
-            This monitoring system implements a multilayered defense against various DDoS attacks targeting your gaming sensors:
-          </p>
-          <ol>
-            <li><strong>Edge Filtering:</strong> Attack traffic is detected and filtered at the sensor level before impacting performance</li>
-            <li><strong>Adaptive Rate Limiting:</strong> Dynamically adjusts traffic thresholds based on historical patterns</li>
-            <li><strong>Signature-Based Detection:</strong> Identifies known attack patterns and automatically applies countermeasures</li>
-            <li><strong>Anomaly Detection:</strong> Machine learning algorithms identify deviations from normal traffic</li>
-            <li><strong>Secure Bootstrapping:</strong> Devices use mutual authentication with the gateway to prevent impersonation</li>
-          </ol>
-        </div>
-      </div>
-
-      <div className="card">
-        <h2 className="card-title">IoT Attack Simulation</h2>
-        <p>To test the security monitoring features of your IoT gaming sensors, you can simulate an attack using the following methods:</p>
-        
-        <div style={{ 
-          backgroundColor: 'var(--card-bg)', 
-          border: '1px solid var(--border-color)',
-          borderRadius: '5px',
-          padding: '15px',
-          fontFamily: 'monospace',
-          overflow: 'auto'
-        }}>
-          <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>DDoS simulation on IoT sensor gateway:</p>
-          <code>sudo hping3 -1 --flood -a [SPOOFED_IP] [SENSOR_GATEWAY_IP]</code>
-          <p style={{ margin: '10px 0 10px 0', fontWeight: 'bold' }}>Or using ping with large packets:</p>
-          <code>ping -f -s 65500 [SENSOR_GATEWAY_IP]</code>
-          <p style={{ margin: '10px 0 0 0', fontWeight: 'bold' }}>For a more distributed attack simulation:</p>
-          <code>sudo mdk3 [INTERFACE] d -c [CHANNEL] -s 1000</code>
-        </div>
-        
-        <p style={{ marginTop: '15px', fontSize: '0.9rem', color: 'var(--error-color)' }}>
-          <strong>Warning:</strong> Only perform these tests in your controlled lab environment against 
-          your own devices. Unauthorized DoS attacks are illegal and unethical.
-        </p>
-      </div>
+      )}      
     </div>
   );
 };

@@ -24,7 +24,7 @@ const DeviceManager = ({ user }) => {
         });
 
         if (!response.ok) {
-          // Try to get the error response as JSON
+          
           let errorData;
           try {
             errorData = await response.json();
@@ -49,14 +49,14 @@ const DeviceManager = ({ user }) => {
       } catch (err) {
         console.error('Error fetching devices:', err);
         setError(`Failed to load devices. ${err.message}`);
-        // Use sample devices as fallback on error
+        
         setSampleDevices();
       } finally {
         setLoading(false);
       }
     };
 
-    // Regular function instead of a hook
+    
     const setSampleDevices = () => {
       setDevices([
         {
@@ -87,8 +87,7 @@ const DeviceManager = ({ user }) => {
 
     try {
       const token = localStorage.getItem('authToken');
-
-      // Try to register with server
+  
       const response = await fetch('http://localhost:5000/api/devices/register', {
         method: 'POST',
         headers: {
@@ -128,8 +127,7 @@ const DeviceManager = ({ user }) => {
       setNewDeviceType('keyboard');
     } catch (err) {
       console.error('Error adding device:', err);
-      
-      // Fallback: still add the device to the UI even if server fails
+
       const newDevice = {
         client_id: 'dev_' + Math.random().toString(36).substring(2, 9),
         name: newDeviceName,
@@ -148,7 +146,6 @@ const DeviceManager = ({ user }) => {
     try {
       const token = localStorage.getItem('authToken');
       
-      // Try to update on server (async, don't wait)
       fetch(`http://localhost:5000/api/devices/${deviceId}/status`, {
         method: 'PUT',
         headers: {
@@ -158,7 +155,6 @@ const DeviceManager = ({ user }) => {
         body: JSON.stringify({ status: newStatus })
       }).catch(err => console.warn('Failed to update device status on server:', err));
 
-      // Update locally regardless of server success
       setDevices(devices.map(device => 
         device.client_id === deviceId 
           ? { ...device, status: newStatus } 
@@ -166,7 +162,6 @@ const DeviceManager = ({ user }) => {
       ));
     } catch (err) {
       console.error('Error changing device status:', err);
-      // Still update UI even if server call fails
       setDevices(devices.map(device => 
         device.client_id === deviceId 
           ? { ...device, status: newStatus } 

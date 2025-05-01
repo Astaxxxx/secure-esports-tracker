@@ -1,0 +1,32 @@
+2025-04-28 20:40:35,240 - system_test - INFO - Setting up resilience test environment
+2025-04-28 20:40:35,241 - system_test - INFO - Starting resilience test with 40% packet loss
+2025-04-28 20:40:35,242 - system_test - INFO - Starting network degradation simulation with 40% packet loss
+2025-04-28 20:40:35,250 - system_test - ERROR - clumsy not found. Please install it from https://jagt.github.io/clumsy/
+2025-04-28 20:40:35,280 - system_test - ERROR - Failed to start network degradation: [WinError 2] The system cannot find the file specified
+2025-04-28 20:40:40,281 - system_test - INFO - Sending 100 data points
+2025-04-28 20:43:19,115 - system_test - INFO - Verifying data integrity
+2025-04-28 20:43:19,410 - system_test - WARNING - Invalid JSON response: <!doctype html>
+<html lang=en>
+<title>404 Not Found</title>
+<h1>Not Found</h1>
+<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>
+
+2025-04-28 20:43:19,410 - system_test - INFO - Validating data integrity: 100 sent, 0 received
+2025-04-28 20:43:19,410 - system_test - ERROR - No data was received
+2025-04-28 20:43:19,416 - system_test - INFO - Cleaning up resilience test environment
+2025-04-28 21:10:22,879 - system_test - INFO - Setting up resilience test environment
+2025-04-28 21:10:22,879 - system_test - INFO - Starting resilience test with 40% packet loss
+2025-04-28 21:10:22,880 - system_test - INFO - Starting network degradation simulation with 40% packet loss
+2025-04-28 21:10:22,887 - system_test - ERROR - clumsy not found. Please install it from https://jagt.github.io/clumsy/
+2025-04-28 21:10:22,887 - system_test - ERROR - Failed to start network degradation: [WinError 2] The system cannot find the file specified
+2025-04-28 21:10:27,889 - system_test - INFO - Sending 100 data points
+2025-04-28 21:13:06,692 - system_test - INFO - Verifying data integrity
+2025-04-28 21:13:06,918 - system_test - WARNING - Invalid JSON response: <!doctype html>
+<html lang=en>
+<title>404 Not Found</title>
+<h1>Not Found</h1>
+<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>
+
+2025-04-28 21:13:06,918 - system_test - INFO - Validating data integrity: 100 sent, 0 received
+2025-04-28 21:13:06,918 - system_test - ERROR - No data was received
+2025-04-28 21:13:06,921 - system_test - INFO - Cleaning up resilience test environment

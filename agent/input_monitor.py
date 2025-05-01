@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Secure Esports Equipment Performance Tracker - Input Monitoring Agent
-Captures keyboard and mouse inputs securely for performance analysis
-"""
-
 import time
 import json
 import uuid
@@ -18,7 +12,7 @@ from cryptography.fernet import Fernet
 from secure_sender import SecureSender
 import config
 
-# Configure logging
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -27,7 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger('input_monitor')
 
 class InputMonitor:
-    """Securely monitors keyboard and mouse inputs for gaming performance analysis"""
+   
     
     def __init__(self):
         self.session_id = str(uuid.uuid4())
@@ -41,7 +35,6 @@ class InputMonitor:
         self.last_minute_time = time.time()
         self.offline_mode = False
         
-        # Load encryption key
         try:
             with open(config.KEY_FILE, 'rb') as key_file:
                 key = key_file.read()
@@ -50,19 +43,16 @@ class InputMonitor:
             logger.error(f"Failed to load encryption key: {e}")
             raise
         
-        # Setup secure sender
+        
         self.sender = SecureSender(config.SERVER_URL, config.CLIENT_ID, config.CLIENT_SECRET)
         
-        # Start APM calculation thread
         self.running = True
         self.apm_thread = threading.Thread(target=self._calculate_apm)
         self.apm_thread.daemon = True
         self.apm_thread.start()
         
-        # Create data directory for offline storage
         os.makedirs(os.path.join(config.DATA_DIR, 'local_data'), exist_ok=True)
         
-        # Add IoT device monitoring
         self.iot_devices = {}
         self.iot_thread = threading.Thread(target=self._monitor_iot_devices)
         self.iot_thread.daemon = True
@@ -71,24 +61,23 @@ class InputMonitor:
         logger.info(f"Input monitoring session started: {self.session_id}")
 
     def start(self):
-        """Start monitoring keyboard and mouse inputs"""
-        # Check connection to server
+        
         if not self.sender.test_connection():
             logger.warning("Server connection failed. Starting in offline mode.")
             self.offline_mode = True
-            print("⚠️ Running in offline mode - data will be stored locally")
+            print("Running in offline mode - data will be stored locally")
         else:
             self.offline_mode = False
-            print("✅ Connected to server - data will be uploaded in real-time")
+            print("Connected to server - data will be uploaded in real-time")
             
-        # Keyboard listener
+        
         self.keyboard_listener = keyboard.Listener(
             on_press=self._on_key_press,
             on_release=self._on_key_release
         )
         self.keyboard_listener.start()
         
-        # Mouse listener
+        
         self.mouse_listener = mouse.Listener(
             on_move=self._on_mouse_move,
             on_click=self._on_mouse_click,
@@ -99,11 +88,10 @@ class InputMonitor:
         try:
             print(f"Input monitoring started. Press Ctrl+C to stop.")
             while self.running:
-                # Send accumulated data every 10 seconds
+
                 time.sleep(10)
                 self._send_data()
                 
-                # Try to sync local data if we were previously offline
                 if not self.offline_mode:
                     self.sender.sync_local_data()
         except KeyboardInterrupt:
@@ -114,14 +102,13 @@ class InputMonitor:
             self.stop()
 
     def stop(self):
-        """Stop monitoring and clean up"""
+
         self.running = False
         if hasattr(self, 'keyboard_listener'):
             self.keyboard_listener.stop()
         if hasattr(self, 'mouse_listener'):
             self.mouse_listener.stop()
-            
-        # Try to send final data, but don't get stuck if server is down
+
         try:
             self._send_data(final=True)  # Send final data
         except Exception as e:
@@ -317,7 +304,7 @@ class InputMonitor:
             logger.error(f"Error processing IoT data: {e}")
 
     def _send_attack_data(self, attack_data):
-        """Send attack data to server"""
+        
         try:
             data_package = {
                 'session_id': self.session_id,

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import './App.css';
 
-// Component imports
+
 import Login from './components/Login';
 import Register from './components/Register';
 import Header from './components/Header';
@@ -20,7 +20,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
 
-  // Check authentication on load
+  
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -31,7 +31,7 @@ function App() {
           return;
         }
   
-        // Add this code to handle expired tokens
+      
         try {
           const response = await fetch('http://localhost:5000/api/auth/verify', {
             headers: {
@@ -40,7 +40,7 @@ function App() {
           });
   
           if (response.status === 401) {
-            // Token expired, clear it and redirect to login
+            
             localStorage.removeItem('authToken');
             setIsAuthenticated(false);
             setLoading(false);
@@ -52,9 +52,9 @@ function App() {
           setUser(userData);
           setIsAuthenticated(true);
         } catch (error) {
-          // Handle network errors
+          
           console.error("Token verification failed:", error);
-          // Optional: Still use the token if server is unreachable
+          
         }
       } finally {
         setLoading(false);
