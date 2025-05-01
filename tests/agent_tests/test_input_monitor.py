@@ -1,4 +1,3 @@
-
 import unittest
 import os
 import sys
@@ -8,7 +7,7 @@ import hashlib
 from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-t
+
 from agent.input_monitor import InputMonitor
 
 class TestInputMonitor(unittest.TestCase):
