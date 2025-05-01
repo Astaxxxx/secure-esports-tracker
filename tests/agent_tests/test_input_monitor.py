@@ -37,8 +37,7 @@ class TestInputMonitor(unittest.TestCase):
         self.input_monitor._calculate_apm()
         
  
-        self.assertEqual(self.input_monitor.actions_per_minute, 120,
-                         "APM calculation incorrect")
+        self.assertEqual(self.input_monitor.actions_per_minute, 120,"APM calculation incorrect")
     
     def test_input_event_processing(self):
 
@@ -47,15 +46,11 @@ class TestInputMonitor(unittest.TestCase):
         initial_mouse_count = self.input_monitor.mouse_click_count
      
         self.input_monitor._on_key_press("KeyA")
-        
-        # Simulate mouse event
+ 
         self.input_monitor._on_mouse_click(100, 100, "button1", True)
-        
-        # Assert event counts incremented correctly
-        self.assertEqual(self.input_monitor.key_press_count, initial_keyboard_count + 1,
-                         "Keyboard event count not incremented")
-        self.assertEqual(self.input_monitor.mouse_click_count, initial_mouse_count + 1,
-                         "Mouse event count not incremented")
+   
+        self.assertEqual(self.input_monitor.key_press_count, initial_keyboard_count + 1, "Keyboard event count not incremented")
+        self.assertEqual(self.input_monitor.mouse_click_count, initial_mouse_count + 1,"Mouse event count not incremented")
     
     def test_data_serialization(self):
        
@@ -137,6 +132,5 @@ class TestInputMonitor(unittest.TestCase):
         for i in range(1, len(self.input_monitor.keyboard_events)):
             self.assertGreaterEqual(
                 self.input_monitor.keyboard_events[i]['timestamp'],
-                self.input_monitor.keyboard_events[i-1]['timestamp'],
-                "Timestamps are not in sequence"
+                self.input_monitor.keyboard_events[i-1]['timestamp'],"Timestamps are not in sequence"
             )
