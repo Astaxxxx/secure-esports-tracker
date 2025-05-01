@@ -98,7 +98,6 @@ class TestInputMonitor(unittest.TestCase):
         self.input_monitor.keyboard_events = [
             {'timestamp': 1000.0, 'event_type': 'press', 'key': 'A'},
             {'timestamp': 1001.0, 'event_type': 'release', 'key': 'A'},
-            # Out of sequence timestamp (earlier than previous)
             {'timestamp': 999.0, 'event_type': 'press', 'key': 'B'},
             {'timestamp': 1002.0, 'event_type': 'release', 'key': 'B'}
         ]
