@@ -4,10 +4,8 @@ import sys
 import json
 from unittest.mock import patch, MagicMock, call
 
-# Add project paths to system path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-# Import required components
 from simulations.simulated_gaming_mouse import SimulatedGamingMouse
 from dashboard.src.utils.api import getDeviceSecurityAlerts
 

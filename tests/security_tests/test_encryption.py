@@ -4,17 +4,14 @@ import unittest
 import tempfile
 from unittest.mock import patch, MagicMock
 
-# Add project root to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-# Import the modules to test with fallback implementations
 try:
     from server.security.encryption import generate_key, encrypt_data, decrypt_data, rotate_key
     from server.security.key_manager import KeyManager
     CRYPTOGRAPHY_AVAILABLE = True
     print("Using server.security modules for tests")
 except ImportError:
-    # Mock the modules if they don't exist for testing
     try:
         from cryptography.fernet import Fernet
         
@@ -68,8 +65,7 @@ except ImportError:
     except ImportError:
         print("WARNING: cryptography module not available. Encryption tests will be skipped.")
         CRYPTOGRAPHY_AVAILABLE = False
-        
-        # Define dummy functions to avoid NameError
+
         def generate_key():
             return b"dummy_key"
             
@@ -112,100 +108,76 @@ except ImportError:
                 return token in self.token_cache and self.token_cache[token].get('is_admin', False)
 
 class TestEncryption(unittest.TestCase):
-    """Test cases for encryption module"""
     
     def setUp(self):
-        """Set up test environment"""
         self.test_data = "This is sensitive test data for encryption"
         self.test_key = generate_key()
     
     def test_encryption_integrity(self):
-        """Test 1 & 2: Verify encryption/decryption and wrong key failure"""
         if not CRYPTOGRAPHY_AVAILABLE:
             self.skipTest("Cryptography module not available")
-            
-        # Encrypt the test data
+
         encrypted_data = encrypt_data(self.test_data, self.test_key)
-        
-        # Verify encrypted data is different from original
+ 
         self.assertNotEqual(encrypted_data, self.test_data.encode())
-        
-        # Decrypt and verify it matches original
+ 
         decrypted_data = decrypt_data(encrypted_data, self.test_key)
-        self.assertEqual(decrypted_data, self.test_data)
-        
-        # Generate a different key
+  
         wrong_key = generate_key()
         while wrong_key == self.test_key:
             wrong_key = generate_key()
-            
-        # Attempt to decrypt with wrong key should fail
+
         with self.assertRaises(Exception):
             decrypt_data(encrypted_data, wrong_key)
     
     def test_key_rotation(self):
-        """Test 3: Verify key rotation"""
         if not CRYPTOGRAPHY_AVAILABLE:
             self.skipTest("Cryptography module not available")
             
-        # Encrypt data with original key
         encrypted_data = encrypt_data(self.test_data, self.test_key)
-        
-        # Rotate key and re-encrypt
+
         new_key, reencrypted_data = rotate_key(self.test_key, encrypted_data)
-        
-        # Verify new key is different
+  
         self.assertNotEqual(new_key, self.test_key)
-        
-        # Verify original data can't be decrypted with new key
+ 
         with self.assertRaises(Exception):
             decrypt_data(encrypted_data, new_key)
-            
-        # Verify re-encrypted data can be decrypted with new key
+ 
         self.assertEqual(decrypt_data(reencrypted_data, new_key), self.test_data)
-        
-        # Verify re-encrypted data can't be decrypted with old key
+      
         with self.assertRaises(Exception):
             decrypt_data(reencrypted_data, self.test_key)
 
 class TestKeyManagement(unittest.TestCase):
-    """Test cases for key management"""
     
     def setUp(self):
-        """Set up the test environment"""
-        # Create a temporary directory for key storage
+
         self.temp_dir = tempfile.mkdtemp()
         self.key_manager = KeyManager(key_store_path=self.temp_dir)
         
     def tearDown(self):
-        """Clean up after tests"""
+
         import shutil
-        # Clean up temporary directory
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
         
     def test_token_validation(self):
-        """Test token generation and validation"""
+
         if not CRYPTOGRAPHY_AVAILABLE:
             self.skipTest("Cryptography module not available")
-            
-        # Generate a token for testing
+  
         client_id = "test-device-001"
         token = self.key_manager.generate_token(client_id)
-        
-        # Test 1: Token should validate successfully
+
         self.assertTrue(self.key_manager.validate_token(token))
         self.assertTrue(self.key_manager.validate_token(token, client_id))
-        
-        # Test 2: Token should fail validation with wrong client ID
+
         wrong_client_id = "wrong-device-001"
         self.assertFalse(self.key_manager.validate_token(token, wrong_client_id))
-        
-        # Test 3: Expired token validation
-        # Since we can't easily manipulate time, we'll mock the token cache directly
+
         invalid_token = "invalid-token"
         self.assertFalse(self.key_manager.validate_token(invalid_token))
-        
-        # Test admin token
+
         admin_token = self.key_manager.generate_token("admin-device", is_admin=True)
         self.assertTrue(self.key_manager.is_admin_token(admin_token))
         self.assertFalse(self.key_manager.is_admin_token(token))  # Non-admin token
