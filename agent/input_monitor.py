@@ -271,7 +271,7 @@ class InputMonitor:
             try:
                 # Listen for IoT device metrics on port 5000
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.bind(('localhost', 5000))
+                sock.bind(('localhost', 5001))
                 sock.listen(5)
                 
                 while self.running:

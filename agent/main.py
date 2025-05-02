@@ -15,7 +15,6 @@ logging.basicConfig(
 logger = logging.getLogger('main')
 
 def parse_arguments():
-    
     parser = argparse.ArgumentParser(
         description='Secure Esports Equipment Performance Tracker Agent',
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -28,18 +27,16 @@ Examples:
 """
     )
     
-    mqtt_test_parser = subparsers.add_parser('mqtt-test', help='Test MQTT broker connection')
     subparsers = parser.add_subparsers(dest='command', help='Command to execute')
     
-
+    mqtt_test_parser = subparsers.add_parser('mqtt-test', help='Test MQTT broker connection')
+    
     start_parser = subparsers.add_parser('start', help='Start monitoring inputs')
     start_parser.add_argument('--offline', action='store_true', help='Start in offline mode')
     
-
     test_parser = subparsers.add_parser('test', help='Test connection to server')
     
     status_parser = subparsers.add_parser('status', help='Check agent status')
-    
     
     info_parser = subparsers.add_parser('info', help='Display configuration information')
     

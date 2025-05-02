@@ -331,7 +331,6 @@ class SimulatedGamingMouse:
                 print(f"Error in heatmap publisher: {e}")
     
     def _simulate_attack(self, duration=5):
-       
         if not self.under_attack:
             self.under_attack = True
             self.attack_start_time = time.time()
@@ -343,15 +342,15 @@ class SimulatedGamingMouse:
                 'intensity': attack_intensity,
                 'threshold': self.ping_threshold
             })
-      
+        
             def resolve_attack():
                 time.sleep(duration)
                 if self.under_attack:
                     attack_duration = self._get_attack_duration()
                     self.under_attack = False
                     self.attack_start_time = None
-                    print(f" Attack stopped. Duration: {attack_duration} seconds")
-                   
+                    print(f"✓ Attack stopped. Duration: {attack_duration} seconds")
+                
                     self._publish_security_alert('attack_resolved', {
                         'attack_type': 'ping_flood',
                         'duration': attack_duration
@@ -360,7 +359,6 @@ class SimulatedGamingMouse:
                     self.attack_cooldown = True
                     self.attack_cooldown_until = time.time() + 10  
                 
-        
             attack_thread = threading.Thread(target=resolve_attack)
             attack_thread.daemon = True
             attack_thread.start()
@@ -377,8 +375,7 @@ class SimulatedGamingMouse:
                     self.attack_cooldown = False
                 
                
-                if not self.under_attack and not self.attack_cooldown and random.random() < 0.05:
-                    self._simulate_attack(random.randint(5, 10))
+                
                     
                 time.sleep(1)
                 
@@ -743,21 +740,17 @@ class SimulatedGamingKeyboard:
             attack_thread.start()
     
     def _monitor_network(self):
-        
         while self.running:
             try:
-                self.suspicious_events = 0
+                self.ping_count = 0
                 
                 if self.attack_cooldown and time.time() > self.attack_cooldown_until:
                     self.attack_cooldown = False
-           
-                if not self.under_attack and not self.attack_cooldown and random.random() < 0.05:
-                    self._simulate_attack(random.randint(5, 10)) 
-              
+                    
                 time.sleep(1)
                 
             except Exception as e:
-                print(f"Error monitoring keyboard: {e}")
+                print(f"Error monitoring network: {e}")
                 time.sleep(1)
     
     def _run(self):
