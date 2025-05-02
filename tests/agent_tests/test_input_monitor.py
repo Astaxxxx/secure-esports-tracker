@@ -118,12 +118,9 @@ class TestInputMonitor(unittest.TestCase):
         
       
         processor = TimestampProcessor()
-        
-       
         for i, event in enumerate(self.input_monitor.keyboard_events):
             self.input_monitor.keyboard_events[i]['timestamp'] = processor.validate_timestamp(event['timestamp'])
-        
-        
+    
         self.assertGreater(self.input_monitor.keyboard_events[2]['timestamp'], self.input_monitor.keyboard_events[1]['timestamp'],
                           "Out-of-sequence timestamp was not corrected")
         

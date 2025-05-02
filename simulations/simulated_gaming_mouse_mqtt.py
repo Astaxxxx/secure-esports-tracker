@@ -566,10 +566,9 @@ class SimulatedGamingKeyboard:
             else:
                 key = chr(random.randint(65, 90))  
             
-            # Update key usage count
+           
             self.key_usage[key] += 1
-            
-            # Record key event
+           
             self.key_events.append({
                 'key': key,
                 'event_type': 'press' if random.random() < 0.5 else 'release',
@@ -578,14 +577,12 @@ class SimulatedGamingKeyboard:
             
         # Keep only the latest 200 key events
         self.key_events = self.key_events[-200:]
-        
-        # Calculate key hold duration (time between press and release)
+      
         avg_hold_duration = random.uniform(80, 150)  # milliseconds
         
         # Calculate rollover capability (simultaneous keys pressed)
         current_rollover = min(10, random.randint(1, self.keypresses_per_second + 2))
         
-        # Add some thermal data based on activity level
         base_temp = 27.0  # Base temperature in °C
         activity_factor = (self.keypresses_per_second / 8) * 7  # Scale activity to temperature increase
         device_temperature = base_temp + activity_factor
@@ -604,7 +601,7 @@ class SimulatedGamingKeyboard:
                 'avg_hold_duration_ms': round(avg_hold_duration, 1),
                 'polling_rate': self.polling_rate,
                 'current_rollover': current_rollover,
-                'max_rollover': 10,  # N-key rollover capability
+                'max_rollover': 10,  
                 'device_temperature': round(device_temperature, 1)
             },
             'status': {
