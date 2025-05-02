@@ -68,6 +68,8 @@ const Dashboard = ({ user }) => {
     };
 
     loadDashboardData();
+    const interval = setInterval(loadDashboardData, 30000);
+    return () => clearInterval(interval)
   }, [timeRange]);
 
   const calculateAverage = (data, field) => {
