@@ -26,25 +26,20 @@ class SecureSender:
         self.client_secret = client_secret
         self.auth_token = None
         self.token_expiry = 0
-
         self.max_retries = 5
         self.retry_backoff_factor = 1.5  
         self.initial_retry_delay = 1.0   
         self.max_retry_delay = 30.0      
-
         self.offline_mode = False
-  
         self.pending_data_queue = queue.Queue()
-
         self.sender_thread_running = True
         self.sender_thread = threading.Thread(target=self._background_sender)
         self.sender_thread.daemon = True
         self.sender_thread.start()
         if not self.client_secret:
-            self._load_client_secret()
-            
+            self._load_client_secret()      
         logger.info("Secure sender initialized")
-        
+           
     def _load_client_secret(self):
         try:
             credentials_file = os.path.join(config.DATA_DIR, "credentials.dat")
@@ -59,7 +54,6 @@ class SecureSender:
             logger.error(f"Error loading client secret: {e}")
         
     def authenticate(self, force_retry=False):
-        """Authenticate with the server and get an access token with automatic retries"""
         if self.offline_mode and not force_retry:
             logger.info("Operating in offline mode, authentication skipped")
             return True
@@ -146,13 +140,11 @@ class SecureSender:
         return False
     
     def send_data(self, encrypted_data):
-
         self.pending_data_queue.put({
             'data': encrypted_data,
             'timestamp': time.time(),
             'retry_count': 0
         })
-        
         return True 
     
     def _background_sender(self):
@@ -166,9 +158,7 @@ class SecureSender:
 
                     continue
                 success = self._send_data_item(item)
-                
                 if not success:
-
                     if item['retry_count'] < self.max_retries:
                         item['retry_count'] += 1
                         delay = min(
@@ -181,21 +171,17 @@ class SecureSender:
                     else:
                         logger.warning(f"Max retries exceeded, storing data locally")
                         self._store_data_locally(item['data'])
-            
                 self.pending_data_queue.task_done()
-                
             except Exception as e:
                 logger.error(f"Error in background sender thread: {e}")
                 time.sleep(1.0)
     
     def _send_data_item(self, item):
         encrypted_data = item['data']
-        
         try:
             if self.offline_mode:
                 if time.time() - item['timestamp'] > 300:
                     self.authenticate(force_retry=True)
-            
                 if self.offline_mode:
                     self._store_data_locally(encrypted_data)
                     return True  
@@ -219,9 +205,7 @@ class SecureSender:
                 request_data.encode(),
                 hashlib.sha256
             ).hexdigest()
-            
             try:
-
                 response = requests.post(
                     f"{self.server_url}/api/metrics/upload",
                     json=payload,
@@ -246,106 +230,81 @@ class SecureSender:
                     else:
                         self._store_data_locally(encrypted_data)
                         return True
-                
                 logger.warning(f"Data upload failed: {response.status_code} - {response.text}")
                 return False
-                
             except (requests.exceptions.ConnectionError, 
                     requests.exceptions.Timeout,
                     requests.exceptions.RequestException) as e:
                 logger.error(f"Network error sending data: {e}")
                 return False
-                
         except Exception as e:
             logger.error(f"Error sending data: {e}")
             return False
-    
+        
     def _store_data_locally(self, encrypted_data):
         try:
             import os
             import time
-            
             local_data_dir = os.path.join(config.DATA_DIR, 'local_data')
             os.makedirs(local_data_dir, exist_ok=True)
-
             timestamp = int(time.time())
             filename = f"{timestamp}_{self.client_id}.dat"
             filepath = os.path.join(local_data_dir, filename)
-
             with open(filepath, 'wb') as f:
                 f.write(encrypted_data)
-                
             logger.info(f"Data stored locally: {filepath}")
             return True
-            
         except Exception as e:
             logger.error(f"Failed to store data locally: {e}")
             return False
     
     def sync_local_data(self):
-  
         if self.offline_mode:
             logger.info("Still in offline mode, skipping sync")
             return 0
-            
         try:
             import os
-            import glob
-            
+            import glob 
             local_data_dir = os.path.join(config.DATA_DIR, 'local_data')
             if not os.path.exists(local_data_dir):
                 return 0
-
             data_files = glob.glob(os.path.join(local_data_dir, '*.dat'))
             if not data_files:
-                return 0
-                
+                return 0    
             logger.info(f"Found {len(data_files)} locally stored data files to sync")
-            
             if not self.auth_token or time.time() > self.token_expiry:
                 if not self.authenticate():
                     logger.warning("Cannot authenticate to sync local data")
                     return 0
-            
             files_synced = 0
- 
             for file_path in data_files:
                 try:
                     with open(file_path, 'rb') as f:
                         encrypted_data = f.read()
-
                     item = {
                         'data': encrypted_data,
                         'timestamp': time.time(),
                         'retry_count': 0
                     }
-                    
                     success = self._send_data_item(item)
                     
                     if success:
-
                         os.remove(file_path)
                         logger.info(f"Successfully synced and removed: {file_path}")
                         files_synced += 1
                 except Exception as e:
                     logger.error(f"Error syncing file {file_path}: {e}")
-            
-            return files_synced
-                    
+            return files_synced     
         except Exception as e:
             logger.error(f"Error in sync_local_data: {e}")
             return 0
-
+        
     def test_connection(self, max_retries=3):
-
         try:
             logger.info(f"Testing connection to server: {self.server_url}")
-            
             retry_count = 0
             retry_delay = self.initial_retry_delay
-            
             while retry_count <= max_retries:
-                # Basic connectivity test
                 try:
                     response = requests.get(
                         self.server_url,
@@ -353,7 +312,6 @@ class SecureSender:
                         verify=config.TLS_VERIFY
                     )
                     logger.info(f"Server connection successful: {response.status_code}")
-                    
                     if self.authenticate():
                         logger.info("Authentication test successful")
                         print("✓ Connection test successful!")
@@ -362,12 +320,10 @@ class SecureSender:
                     else:
                         logger.error("Authentication test failed")
                         print("✗ Authentication failed")
-                        return False
-                        
+                        return False     
                 except requests.exceptions.RequestException as e:
                     logger.error(f"Server connection failed (attempt {retry_count+1}/{max_retries+1}): {e}")
-                    
-                    # Last retry failed
+
                     if retry_count >= max_retries:
                         print(f"Cannot connect to server at {self.server_url}")
                         print("Please check if the server is running and accessible.")
@@ -384,13 +340,10 @@ class SecureSender:
             return False
             
     def stop(self):
-
         if hasattr(self, 'sender_thread_running'):
             self.sender_thread_running = False
-            
             if hasattr(self, 'sender_thread') and self.sender_thread.is_alive():
                 self.sender_thread.join(timeout=2.0)
-
             while not self.pending_data_queue.empty():
                 try:
                     item = self.pending_data_queue.get(block=False)

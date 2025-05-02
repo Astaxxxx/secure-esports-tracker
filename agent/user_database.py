@@ -15,7 +15,6 @@ logging.basicConfig(
     filename='user_database.log'
 )
 logger = logging.getLogger('user_database')
-
 class UserDatabase:
     
     def __init__(self, db_path=None, encryption_key=None):
@@ -25,15 +24,11 @@ class UserDatabase:
             'data',
             'users.db'
         )
-        
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-  
         self.encryption_key = encryption_key or self._load_or_create_key()
-
         self._init_database()
-        
         logger.info("User database initialized")
-    
+        
     def _load_or_create_key(self):
         key_path = os.path.join(os.path.dirname(self.db_path), 'user_db.key')
         
@@ -45,12 +40,10 @@ class UserDatabase:
                     return key
             else:
                 key = Fernet.generate_key()
-                
-                # Save to file with secure permissions
+
                 with open(key_path, 'wb') as f:
                     f.write(key)
-                os.chmod(key_path, 0o600)  # Secure file permissions
-                
+                os.chmod(key_path, 0o600)  
                 logger.info("Generated new encryption key")
                 return key
                 
@@ -102,11 +95,9 @@ class UserDatabase:
                 severity TEXT DEFAULT 'info',
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
-            ''')
-            
+            ''') 
             conn.commit()
             conn.close()
-            
             logger.info("Database schema initialized")
 
             if not self.get_user_count():
@@ -134,7 +125,6 @@ class UserDatabase:
 
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
             cursor.execute('''
             INSERT INTO users (username, email, password_hash, salt, role, created_at, encrypted_data)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -342,10 +332,8 @@ class UserDatabase:
             FROM users
             WHERE id = ?
             ''', (user_id,))
-            
             user = cursor.fetchone()
-            conn.close()
-            
+            conn.close() 
             if not user:
                 return None
                 
@@ -371,7 +359,6 @@ class UserDatabase:
             return None
     
     def get_user_by_username(self, username):
-
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -413,17 +400,13 @@ class UserDatabase:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
             query = '''
             SELECT id, username, email, role, created_at, last_login, active
             FROM users
             '''
-            
             if active_only:
-                query += ' WHERE active = 1'
-                
+                query += ' WHERE active = 1'    
             cursor.execute(query)
-            
             users = []
             for row in cursor.fetchall():
                 user_id, username, email, role, created_at, last_login, active = row
@@ -447,20 +430,16 @@ class UserDatabase:
             return []
     
     def delete_user(self, user_id):
-  
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
- 
             cursor.execute('SELECT username FROM users WHERE id = ?', (user_id,))
             result = cursor.fetchone()
             if not result:
                 conn.close()
                 logger.warning(f"Attempted to delete non-existent user ID: {user_id}")
                 return False
-                
             username = result[0]
- 
             cursor.execute('''
             UPDATE users SET active = 0 WHERE id = ?
             ''', (user_id,))
@@ -478,7 +457,6 @@ class UserDatabase:
             
             conn.commit()
             conn.close()
-            
             logger.info(f"Deleted user {user_id} ({username})")
             return True
             
@@ -489,11 +467,9 @@ class UserDatabase:
             return False
     
     def create_session(self, user_id, token, expires_at, ip_address=None):
-        """Create a new session for a user"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
             cursor.execute('''
             INSERT INTO sessions (user_id, token, created_at, expires_at, last_activity, ip_address)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -519,85 +495,69 @@ class UserDatabase:
             if 'conn' in locals():
                 conn.close()
             return None
-    
+        
     def validate_session(self, token):
-
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-
             cursor.execute('''
             SELECT s.id, s.user_id, s.expires_at, u.username, u.role
             FROM sessions s
             JOIN users u ON s.user_id = u.id
             WHERE s.token = ? AND u.active = 1
             ''', (token,))
-            
             session = cursor.fetchone()
-            
             if not session:
                 conn.close()
                 logger.warning(f"Invalid session token: {token[:10]}...")
                 return None
-                
             session_id, user_id, expires_at, username, role = session
-
+            
             if datetime.fromisoformat(expires_at) < datetime.now():
                 cursor.execute('DELETE FROM sessions WHERE id = ?', (session_id,))
                 conn.commit()
                 conn.close()
                 logger.warning(f"Expired session token for user {user_id}")
                 return None
-
+            
             cursor.execute('''
             UPDATE sessions SET last_activity = ? WHERE id = ?
             ''', (datetime.now().isoformat(), session_id))
-            
             conn.commit()
             conn.close()
-            
             return {
                 'user_id': user_id,
                 'username': username,
                 'role': role
             }
-            
+
         except Exception as e:
             logger.error(f"Error validating session: {e}")
             if 'conn' in locals():
                 conn.close()
             return None
-    
-    def delete_session(self, token):
 
+    def delete_session(self, token):
         try:
             conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
+            cursor = conn.cursor()  
             cursor.execute('DELETE FROM sessions WHERE token = ?', (token,))
-            
             deleted = cursor.rowcount > 0
-            
             conn.commit()
             conn.close()
-            
             if deleted:
                 logger.info(f"Deleted session: {token[:10]}...")
-            
             return deleted
-            
         except Exception as e:
             logger.error(f"Error deleting session: {e}")
             if 'conn' in locals():
                 conn.close()
             return False
-    
+
     def log_security_event(self, event_type, user_id=None, ip_address=None, details=None, severity='info'):
- 
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
             details_json = None
             if details:
                 if isinstance(details, dict):
@@ -627,11 +587,8 @@ class UserDatabase:
                 level = logging.WARNING
             elif severity == 'critical':
                 level = logging.CRITICAL
-                
             logger.log(level, f"Security event: {event_type} (user: {user_id}, severity: {severity})")
-            
             return event_id
-            
         except Exception as e:
             logger.error(f"Error logging security event: {e}")
             if 'conn' in locals():
@@ -641,16 +598,15 @@ class UserDatabase:
     def get_security_events(self, user_id=None, event_type=None, severity=None, limit=100):
         try:
             conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
+            cursor = conn.cursor()        
             query = 'SELECT id, user_id, event_type, timestamp, ip_address, details, severity FROM security_events'
             conditions = []
-            params = []
+            params = []  
             
             if user_id:
                 conditions.append('user_id = ?')
-                params.append(user_id)
-            
+                params.append(user_id) 
+                
             if event_type:
                 conditions.append('event_type = ?')
                 params.append(event_type)
@@ -658,7 +614,7 @@ class UserDatabase:
             if severity:
                 conditions.append('severity = ?')
                 params.append(severity)
-            
+                
             if conditions:
                 query += ' WHERE ' + ' AND '.join(conditions)
                 
@@ -687,10 +643,8 @@ class UserDatabase:
                     'details': details_data,
                     'severity': severity
                 })
-            
             conn.close()
             return events
-            
         except Exception as e:
             logger.error(f"Error getting security events: {e}")
             if 'conn' in locals():
@@ -698,17 +652,13 @@ class UserDatabase:
             return []
     
     def get_user_count(self):
-
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
             cursor.execute('SELECT COUNT(*) FROM users')
             count = cursor.fetchone()[0]
-            
             conn.close()
-            return count
-            
+            return count    
         except Exception as e:
             logger.error(f"Error getting user count: {e}")
             if 'conn' in locals():
@@ -716,7 +666,6 @@ class UserDatabase:
             return 0
     
     def _hash_password(self, password, salt):
-
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
@@ -729,30 +678,25 @@ class UserDatabase:
     
     def _encrypt_data(self, data):
         if isinstance(data, str):
-            data = data.encode('utf-8')
-            
+            data = data.encode('utf-8')  
         cipher = Fernet(self.encryption_key)
         return cipher.encrypt(data).decode('utf-8')
     
     def _decrypt_data(self, encrypted_data):
-
         cipher = Fernet(self.encryption_key)
         decrypted = cipher.decrypt(encrypted_data.encode('utf-8'))
         return decrypted.decode('utf-8')
     
 def get_user_database(db_path=None, encryption_key=None):
-
     return UserDatabase(db_path, encryption_key)
 
 if __name__ == "__main__":
     db = get_user_database()
- 
     try:
         db.create_user('admin', 'admin@example.com', 'admin', role='admin')
         print("Created admin user")
     except ValueError as e:
         print(f"Note: {e}")
-
     success, user = db.verify_user('admin', 'admin')
     if success:
         print(f"Login successful: {user['username']} (role: {user['role']})")

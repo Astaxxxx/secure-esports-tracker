@@ -36,19 +36,15 @@ if mac_addresses:
     client_id_hash = hashlib.sha256(id_seed.encode()).digest()
     CLIENT_ID = str(uuid.UUID(bytes=client_id_hash[:16]))
 else:
-
     CLIENT_ID = str(uuid.uuid4())
 
 key = Fernet.generate_key()
 CLIENT_SECRET = base64.b64encode(key).decode('utf-8')
-
 DEVICE_NAME = socket.gethostname()
 DEVICE_TYPE = "Gaming PC"  
-
 DATA_DIR = os.path.join(os.path.expanduser("~"), ".secure-esports-tracker")
 KEY_FILE = os.path.join(DATA_DIR, "encryption.key")
 LOG_FILE = os.path.join(DATA_DIR, "agent.log")
-
 os.makedirs(DATA_DIR, exist_ok=True)
 if not os.path.exists(KEY_FILE):
     key = Fernet.generate_key()

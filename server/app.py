@@ -122,7 +122,6 @@ devices = {
 metrics = {}  
 sessions = {}  
 
-
 security_events = []
 
 @app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
@@ -197,6 +196,7 @@ def require_auth(f):
             
         return f(*args, **kwargs)
     return decorated
+
 def verify_signature(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -257,8 +257,6 @@ class RouteDecorator:
 app.route_decorator = RouteDecorator()
 
 security_routes = routes.security.register_security_routes(app)
-
-
 
 @app.route('/')
 def index():
@@ -499,7 +497,6 @@ def get_performance():
     try:
         time_range = request.args.get('timeRange', 'day')
         
-        # Generate fresh sample data with current timestamps
         now = datetime.now()
         sample_data = [
             {
@@ -534,7 +531,6 @@ def get_performance():
             }
         ]
         
-        # For variety, slightly randomize the values each time
         import random
         for item in sample_data:
             item['actions_per_minute'] += random.randint(-5, 5)

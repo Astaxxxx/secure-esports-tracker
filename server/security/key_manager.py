@@ -11,7 +11,6 @@ import jwt
 from cryptography.fernet import Fernet
 
 logger = logging.getLogger('security.key_manager')
-
 class KeyManager:
 
     def __init__(self, key_store_path=None):

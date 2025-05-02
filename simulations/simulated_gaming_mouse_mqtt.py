@@ -580,21 +580,18 @@ class SimulatedGamingKeyboard:
                 'timestamp': time.time()
             })
             
-        # Keep only the latest 200 key events
         self.key_events = self.key_events[-200:]
       
-        avg_hold_duration = random.uniform(80, 150)  # milliseconds
+        avg_hold_duration = random.uniform(80, 150)  
         
-        # Calculate rollover capability (simultaneous keys pressed)
         current_rollover = min(10, random.randint(1, self.keypresses_per_second + 2))
         
-        base_temp = 27.0  # Base temperature in °C
-        activity_factor = (self.keypresses_per_second / 8) * 7  # Scale activity to temperature increase
+        base_temp = 27.0  
+        activity_factor = (self.keypresses_per_second / 8) * 7  
         device_temperature = base_temp + activity_factor
         
-        # Increase temperature during attacks
         if self.under_attack:
-            device_temperature += 3.0  # Attack causes additional heat
+            device_temperature += 3.0  
         
         return {
             'device_id': self.device_id,
@@ -612,7 +609,7 @@ class SimulatedGamingKeyboard:
             'status': {
                 'under_attack': self.under_attack,
                 'attack_duration': self._get_attack_duration() if self.under_attack else 0,
-                'battery_level': 100,  # Usually wired, but could be wireless
+                'battery_level': 100,  
                 'connection_quality': random.randint(80, 100) if not self.under_attack else random.randint(40, 70),
                 'illumination': {
                     'mode': self.illumination_mode,
@@ -670,7 +667,7 @@ class SimulatedGamingKeyboard:
                 'timestamp': datetime.now().isoformat(),
                 'details': details
             })
-            result = self.client.publish(self.security_topic, payload, qos=2)  # Use QoS 2 for security alerts
+            result = self.client.publish(self.security_topic, payload, qos=2)  
             return result.rc == mqtt.MQTT_ERR_SUCCESS
         except Exception as e:
             print(f"Error publishing security alert: {e}")
@@ -682,9 +679,7 @@ class SimulatedGamingKeyboard:
             return False
             
         try:
-           
             total_presses = sum(self.key_usage.values()) or 1  
-          
             keymap_data = {}
             for key, count in self.key_usage.items():
                 percentage = (count / total_presses) * 100
@@ -706,7 +701,6 @@ class SimulatedGamingKeyboard:
         
         while self.running:
             try:
-                # Publish every 5 seconds
                 time.sleep(5)
                 self._publish_keymap()
             except Exception as e:
@@ -719,8 +713,7 @@ class SimulatedGamingKeyboard:
             self.attack_start_time = time.time()
             attack_intensity = random.randint(70, 100)
             print(f" ALERT: Keyboard is under attack! Detected {attack_intensity} suspicious events in 1 second")
-            
-            # Publish attack alert
+
             self._publish_security_alert('attack_detected', {
                 'attack_type': 'key_injection',
                 'intensity': attack_intensity,
@@ -762,7 +755,6 @@ class SimulatedGamingKeyboard:
                 time.sleep(1)
     
     def _run(self):
-        """Main execution loop"""
         while self.running:
             #
             data = self._generate_performance_data()
@@ -815,7 +807,6 @@ def main():
             print("No devices were started. Exiting.")
             return 1
             
-
         print(f"Running {len(devices)} simulated IoT gaming device(s)...")
         while True:
             try:

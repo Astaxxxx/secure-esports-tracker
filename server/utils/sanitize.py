@@ -28,7 +28,6 @@ def sanitize_string(value):
     if not isinstance(value, str):
         return value
     
-    # Escape HTML characters
     clean_value = html.escape(value)
   
     clean_value = re.sub(r'<script.*?>.*?</script>', '', clean_value, flags=re.DOTALL | re.IGNORECASE)

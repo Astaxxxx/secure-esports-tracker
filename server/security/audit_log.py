@@ -9,7 +9,6 @@ from flask import request, current_app
 from database.models import db, SecurityEvent, User, Device
 
 logger = logging.getLogger('security.audit')
-
 class AuditLogger:
 
     def __init__(self):
@@ -50,7 +49,7 @@ class AuditLogger:
                 'details': details_str,
                 'severity': severity
             }
-
+            
             with self.queue_lock:
                 self.log_queue.append(event)
 

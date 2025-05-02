@@ -15,7 +15,6 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Form validation
     if (!username || !email || !password || !confirmPassword) {
       setError('Please fill in all fields');
       return;
@@ -26,7 +25,6 @@ const Register = () => {
       return;
     }
     
- 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Please enter a valid email address');

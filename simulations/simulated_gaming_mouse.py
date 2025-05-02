@@ -5,10 +5,7 @@ import threading
 import argparse
 import paho.mqtt.client as mqtt
 from datetime import datetime
-
 class SimulatedGamingMouse:
-    
-    
     def __init__(self, device_id="mouse-001", mqtt_broker="localhost", mqtt_port=1883, 
                  mqtt_topic_prefix="iot/gaming/mouse", send_interval=1):
         self.device_id = device_id
@@ -24,7 +21,6 @@ class SimulatedGamingMouse:
         self.screen_width = 1920  
         self.screen_height = 1080  
         
-  
         self.clicks_per_second = 0
         self.movement_data = []
         self.connected = False
@@ -44,14 +40,12 @@ class SimulatedGamingMouse:
         self.control_topic = f"{self.mqtt_topic_prefix}/{self.device_id}/control"
         
     def _on_connect(self, client, userdata, flags, rc):
-    
         if rc == 0:
             print(f"Connected to MQTT broker at {self.mqtt_broker}:{self.mqtt_port}")
             self.connected = True
             
             self.client.subscribe(self.control_topic)
             self.client.on_message = self._on_message
-      
             self._publish_status("online")
         else:
             print(f"Failed to connect to MQTT broker with code: {rc}")
@@ -102,47 +96,36 @@ class SimulatedGamingMouse:
       
         self.running = True
         self.session_id = f"session_{int(time.time())}"
-    
         try:
             self.client.connect(self.mqtt_broker, self.mqtt_port, 60)
             self.client.loop_start()
         except Exception as e:
             print(f"Failed to connect to MQTT broker: {e}")
             return False
-        
         self.main_thread = threading.Thread(target=self._run)
         self.main_thread.daemon = True
         self.main_thread.start()
-    
         self.network_thread = threading.Thread(target=self._monitor_network)
         self.network_thread.daemon = True
         self.network_thread.start()
-        
         print(f"Simulated gaming mouse started with ID: {self.device_id}")
         print(f"Session ID: {self.session_id}")
         print(f"Simulating network traffic and attack detection...")
         return True
-        
     def stop(self):
-      
         if self.running:
             self.running = False
-           
             if self.connected:
                 self._publish_status("offline")
-           
             self.client.loop_stop()
             self.client.disconnect()
-            
             if hasattr(self, 'main_thread') and self.main_thread.is_alive():
                 self.main_thread.join(timeout=2)
             if hasattr(self, 'network_thread') and self.network_thread.is_alive():
                 self.network_thread.join(timeout=2)
-                
             print("Simulated gaming mouse stopped")
-        
+            
     def _generate_performance_data(self):
-       
         hour = datetime.now().hour
         if 9 <= hour <= 22:
             self.clicks_per_second = random.randint(1, 6)
@@ -156,7 +139,6 @@ class SimulatedGamingMouse:
                 'timestamp': time.time()
             })
             
-     
         self.movement_data = self.movement_data[-100:]
         
         avg_click_distance = 0
@@ -197,10 +179,8 @@ class SimulatedGamingMouse:
         return 0
     
     def _publish_data(self, data):
-        
         if not self.connected:
-            return False
-            
+            return False  
         try:
             payload = json.dumps(data)
             result = self.client.publish(self.data_topic, payload, qos=1)
@@ -208,12 +188,10 @@ class SimulatedGamingMouse:
         except Exception as e:
             print(f"Error publishing data: {e}")
             return False
-    
+        
     def _publish_status(self, status):
-       
         if not self.connected and status != "offline":
             return False
-            
         try:
             payload = json.dumps({
                 'device_id': self.device_id,
@@ -227,10 +205,8 @@ class SimulatedGamingMouse:
             return False
     
     def _publish_security_alert(self, alert_type, details):
-      
         if not self.connected:
             return False
-            
         try:
             payload = json.dumps({
                 'device_id': self.device_id,
@@ -238,7 +214,7 @@ class SimulatedGamingMouse:
                 'timestamp': datetime.now().isoformat(),
                 'details': details
             })
-            result = self.client.publish(self.security_topic, payload, qos=2)  # Use QoS 2 for security alerts
+            result = self.client.publish(self.security_topic, payload, qos=2) 
             return result.rc == mqtt.MQTT_ERR_SUCCESS
         except Exception as e:
             print(f"Error publishing security alert: {e}")
@@ -248,25 +224,20 @@ class SimulatedGamingMouse:
       
         while self.running:
             try:
-              
                 self.ping_count = 0
-                
-               
                 if random.random() < 0.05:
                     self.ping_count = random.randint(self.ping_threshold, self.ping_threshold + 50)
                 else:
                     self.ping_count = random.randint(0, self.ping_threshold - 10)
                     
                 time.sleep(1)
-                
-                # Check if we're under attack
+
                 if self.ping_count > self.ping_threshold:
                     if not self.under_attack:
                         self.under_attack = True
                         self.attack_start_time = time.time()
                         print(f" ALERT: Device is under attack! Received {self.ping_count} pings in 1 second")
-                        
-                        # Publish attack alert
+
                         self._publish_security_alert('attack_detected', {
                             'attack_type': 'ping_flood',
                             'intensity': self.ping_count,
@@ -276,8 +247,6 @@ class SimulatedGamingMouse:
                     if self.under_attack:
                         duration = self._get_attack_duration()
                         print(f"✓ Attack stopped. Duration: {duration} seconds")
-                        
-                        # Publish attack resolved alert
                         self._publish_security_alert('attack_resolved', {
                             'attack_type': 'ping_flood',
                             'duration': duration
@@ -291,12 +260,9 @@ class SimulatedGamingMouse:
                 time.sleep(1)
     
     def _run(self):
-    
         while self.running:
-    
             data = self._generate_performance_data()
             self._publish_data(data)
- 
             time.sleep(self.send_interval)
 
 def main():

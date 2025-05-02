@@ -130,15 +130,13 @@ def test_mqtt_connection_cmd():
         return 1
     
 def main():
-    """Main entry point"""
     args = parse_arguments()
     
     if not args.command:
-        # If no command provided, show help
+
         print("Please specify a command. Use --help for more information.")
         return 1
-    
-    # Execute the requested command
+
     if args.command == 'start':
         return start_agent(args.offline)
     elif args.command == 'test':

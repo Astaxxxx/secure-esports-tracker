@@ -82,7 +82,6 @@ const Dashboard = ({ user }) => {
   const avgKeyPresses = calculateAverage(performanceData, 'key_press_count');
   const avgMouseClicks = calculateAverage(performanceData, 'mouse_click_count');
 
-  // Format date for display
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleString();

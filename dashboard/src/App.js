@@ -19,7 +19,6 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
-
   
   useEffect(() => {
     const checkAuth = async () => {
@@ -31,7 +30,6 @@ function App() {
           return;
         }
   
-      
         try {
           const response = await fetch('http://localhost:5000/api/auth/verify', {
             headers: {

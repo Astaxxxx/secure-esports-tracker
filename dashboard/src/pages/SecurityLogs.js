@@ -46,13 +46,13 @@ const SecurityLogs = ({ user }) => {
     fetchSecurityLogs();
   }, [user, filter]);
 
-  // Format date for display
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleString();
   };
 
-  // Get severity color
+
   const getSeverityColor = (severity) => {
     switch (severity) {
       case 'critical':

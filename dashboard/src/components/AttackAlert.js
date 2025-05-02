@@ -2,7 +2,7 @@ import React from 'react';
 
 const AttackAlert = ({ attack }) => {
   const severity = attack.packet_count > 1000 ? 'CRITICAL' : 'WARNING';
-
+  
   return (
     <div className="attack-alert">
       <div className="attack-header">

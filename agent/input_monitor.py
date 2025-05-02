@@ -12,7 +12,6 @@ from cryptography.fernet import Fernet
 from secure_sender import SecureSender
 import config
 
-
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -21,8 +20,6 @@ logging.basicConfig(
 logger = logging.getLogger('input_monitor')
 
 class InputMonitor:
-   
-    
     def __init__(self):
         self.session_id = str(uuid.uuid4())
         self.start_time = datetime.now()
@@ -43,25 +40,20 @@ class InputMonitor:
             logger.error(f"Failed to load encryption key: {e}")
             raise
         
-        
         self.sender = SecureSender(config.SERVER_URL, config.CLIENT_ID, config.CLIENT_SECRET)
-        
         self.running = True
         self.apm_thread = threading.Thread(target=self._calculate_apm)
         self.apm_thread.daemon = True
         self.apm_thread.start()
-        
         os.makedirs(os.path.join(config.DATA_DIR, 'local_data'), exist_ok=True)
-        
         self.iot_devices = {}
         self.iot_thread = threading.Thread(target=self._monitor_iot_devices)
         self.iot_thread.daemon = True
         self.iot_thread.start()
 
         logger.info(f"Input monitoring session started: {self.session_id}")
-
-    def start(self):
         
+    def start(self):
         if not self.sender.test_connection():
             logger.warning("Server connection failed. Starting in offline mode.")
             self.offline_mode = True
@@ -70,28 +62,23 @@ class InputMonitor:
             self.offline_mode = False
             print("Connected to server - data will be uploaded in real-time")
             
-        
         self.keyboard_listener = keyboard.Listener(
             on_press=self._on_key_press,
             on_release=self._on_key_release
         )
         self.keyboard_listener.start()
-        
-        
         self.mouse_listener = mouse.Listener(
             on_move=self._on_mouse_move,
             on_click=self._on_mouse_click,
             on_scroll=self._on_mouse_scroll
         )
         self.mouse_listener.start()
-        
         try:
             print(f"Input monitoring started. Press Ctrl+C to stop.")
             while self.running:
 
                 time.sleep(10)
                 self._send_data()
-                
                 if not self.offline_mode:
                     self.sender.sync_local_data()
         except KeyboardInterrupt:
@@ -100,17 +87,15 @@ class InputMonitor:
         except Exception as e:
             logger.error(f"Error in input monitor main loop: {e}")
             self.stop()
-
+            
     def stop(self):
-
         self.running = False
         if hasattr(self, 'keyboard_listener'):
             self.keyboard_listener.stop()
         if hasattr(self, 'mouse_listener'):
             self.mouse_listener.stop()
-
         try:
-            self._send_data(final=True)  # Send final data
+            self._send_data(final=True)  
         except Exception as e:
             logger.error(f"Error sending final data: {e}")
         
@@ -118,9 +103,7 @@ class InputMonitor:
         print("Input monitoring stopped.")
 
     def _on_key_press(self, key):
-        """Handle key press events"""
         try:
-            # Record timestamp and key
             event = {
                 'timestamp': time.time(),
                 'event_type': 'press',
@@ -129,14 +112,12 @@ class InputMonitor:
             self.keyboard_events.append(event)
             self.key_press_count += 1
             self.last_minute_actions += 1
-            
-            # For security, don't log actual keys pressed
+
             logger.debug(f"Key press recorded (count: {self.key_press_count})")
         except Exception as e:
             logger.error(f"Error handling key press: {e}")
 
     def _on_key_release(self, key):
-        """Handle key release events"""
         try:
             event = {
                 'timestamp': time.time(),
@@ -149,9 +130,7 @@ class InputMonitor:
             logger.error(f"Error handling key release: {e}")
 
     def _on_mouse_move(self, x, y):
-        """Handle mouse movement events (sampled to reduce volume)"""
         try:
-            # Only sample some movements to reduce data volume
             if len(self.mouse_events) % 5 == 0:
                 event = {
                     'timestamp': time.time(),
@@ -165,7 +144,6 @@ class InputMonitor:
             logger.error(f"Error handling mouse move: {e}")
 
     def _on_mouse_click(self, x, y, button, pressed):
-        """Handle mouse click events"""
         try:
             event = {
                 'timestamp': time.time(),
@@ -184,7 +162,6 @@ class InputMonitor:
             logger.error(f"Error handling mouse click: {e}")
 
     def _on_mouse_scroll(self, x, y, dx, dy):
-        """Handle mouse scroll events"""
         try:
             event = {
                 'timestamp': time.time(),
@@ -201,7 +178,6 @@ class InputMonitor:
             logger.error(f"Error handling mouse scroll: {e}")
 
     def _calculate_apm(self):
-        """Calculate actions per minute in a separate thread"""
         while self.running:
             try:
                 current_time = time.time()
@@ -218,12 +194,11 @@ class InputMonitor:
                 logger.error(f"Error calculating APM: {e}")
 
     def _send_data(self, final=False):
-        """Encrypt and send collected data to the server"""
+ 
         try:
             if not (self.keyboard_events or self.mouse_events) and not final:
                 return
-            
-            # Prepare data package
+
             data_package = {
                 'session_id': self.session_id,
                 'timestamp': datetime.now().isoformat(),
@@ -238,20 +213,17 @@ class InputMonitor:
                     'device_type': config.DEVICE_TYPE
                 }
             }
-            
-            # Add data integrity hash
+
             data_string = json.dumps(data_package, sort_keys=True)
             data_package['integrity_hash'] = hashlib.sha256(data_string.encode()).hexdigest()
-            
-            # Encrypt data
+
             encrypted_data = self.cipher.encrypt(json.dumps(data_package).encode())
-            
-            # Send data to server
+ 
             response = self.sender.send_data(encrypted_data)
             
             if response and response.status_code == 200:
                 logger.info("Data successfully sent to server")
-                # Clear sent data to avoid duplication
+
                 self.keyboard_events = []
                 self.mouse_events = []
             elif not response and self.offline_mode:
@@ -266,10 +238,8 @@ class InputMonitor:
             logger.error(f"Error sending data: {e}")
 
     def _monitor_iot_devices(self):
-        """Monitor IoT gaming devices for metrics and attacks"""
         while self.running:
             try:
-                # Listen for IoT device metrics on port 5000
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.bind(('localhost', 5001))
                 sock.listen(5)
@@ -283,28 +253,22 @@ class InputMonitor:
                     
             except Exception as e:
                 logger.error(f"Error monitoring IoT devices: {e}")
-                time.sleep(5)  # Wait before retrying
+                time.sleep(5)  
 
     def _process_iot_data(self, data):
-        """Process data received from IoT devices"""
         try:
             data = json.loads(data.decode())
             
             if 'attack_source' in data:
-                # This is attack data
                 logger.warning(f"Attack detected on {data['device_type']}: {data['packet_count']} packets from {data['attack_source']}")
                 self._send_attack_data(data)
             else:
-                # This is metrics data
                 device_type = data['device_type']
                 self.iot_devices[device_type] = data['metrics']
-                logger.info(f"Received metrics from {device_type}: {data['metrics']}")
-                
+                logger.info(f"Received metrics from {device_type}: {data['metrics']}")         
         except Exception as e:
             logger.error(f"Error processing IoT data: {e}")
-
-    def _send_attack_data(self, attack_data):
-        
+    def _send_attack_data(self, attack_data): 
         try:
             data_package = {
                 'session_id': self.session_id,
@@ -315,14 +279,11 @@ class InputMonitor:
                     'device_name': config.DEVICE_NAME,
                     'device_type': config.DEVICE_TYPE
                 }
-            }
-            
+            }   
             encrypted_data = self.cipher.encrypt(json.dumps(data_package).encode())
-            self.sender.send_data(encrypted_data)
-            
+            self.sender.send_data(encrypted_data)   
         except Exception as e:
             logger.error(f"Error sending attack data: {e}")
-
 if __name__ == "__main__":
     try:
         monitor = InputMonitor()

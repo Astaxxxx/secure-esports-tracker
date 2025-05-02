@@ -25,7 +25,6 @@ def derive_key(password, salt=None):
     return key, salt
 
 def encrypt_data(data, key):
-    """Encrypt data using Fernet symmetric encryption"""
     if isinstance(data, str):
         data = data.encode('utf-8')
         
