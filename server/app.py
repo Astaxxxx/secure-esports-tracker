@@ -545,7 +545,7 @@ def get_performance():
         
     except Exception as e:
         logger.error(f"Error retrieving performance data: {e}")
-        # Return a valid response even on error
+  
         fallback_data = [
             {
                 'timestamp': datetime.now().isoformat(),
