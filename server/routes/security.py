@@ -111,10 +111,17 @@ def register_security_routes(app):
         except Exception as e:
             app.logger.error(f"Error retrieving IoT data: {e}")
             return app.jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+        
+    @app.route('/api/security/reset/<device_id>', methods=['POST'])
+    def reset_device_alerts(device_id):
+        if device_id in app.device_alerts:
+            app.device_alerts[device_id] = []
+        return app.jsonify({'status': 'success', 'message': 'Device alerts reset'})
 
     return [
         receive_security_alert,
         get_device_security_alerts,
+        reset_device_alerts,
         receive_iot_data,
         get_iot_data
     ]

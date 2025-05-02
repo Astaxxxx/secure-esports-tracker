@@ -363,22 +363,30 @@ class SimulatedGamingMouse:
             attack_thread.daemon = True
             attack_thread.start()
     
+
+
     def _monitor_network(self):
-     
+
         while self.running:
             try:
               
                 self.ping_count = 0
                 
-               
+
+                if not self.under_attack and not self.attack_cooldown:
+
+                    if random.random() < 0.001:
+                        self._simulate_attack(random.randint(5, 10))
+                        # After attack ends, set a longer cooldown period
+                        self.attack_cooldown = True
+                        self.attack_cooldown_until = time.time() + 60  # 60 second cooldown
+                
+    
                 if self.attack_cooldown and time.time() > self.attack_cooldown_until:
                     self.attack_cooldown = False
-                
-               
-                
                     
                 time.sleep(1)
-                
+                    
             except Exception as e:
                 print(f"Error monitoring network: {e}")
                 time.sleep(1)
