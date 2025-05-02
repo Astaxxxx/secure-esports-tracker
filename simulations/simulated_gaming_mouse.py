@@ -21,6 +21,8 @@ class SimulatedGamingMouse:
         self.button_count = 8
         self.running = False
         self.session_id = None
+        self.screen_width = 1920  
+        self.screen_height = 1080  
         
   
         self.clicks_per_second = 0
